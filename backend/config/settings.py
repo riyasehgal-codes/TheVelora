@@ -137,3 +137,11 @@ MAILERS = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
+
+# Django REST Framework configuration
+REST_FRAMEWORK = {
+    # Use JWT tokens to authenticate users.
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+}
