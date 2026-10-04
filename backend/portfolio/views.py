@@ -7,14 +7,18 @@ from rest_framework.permissions import IsAuthenticated
 
 from .serializers import RegisterSerializer, HoldingSerializer
 from .models import Holding
+from .market_data import (
+    get_stock_price,
+    get_exchange_rate,
+    get_historical_prices,
+)
 
+# ==========================================
+# VELORA STATUS
+# ==========================================
 
 @api_view(["GET"])
 def velora_status(request):
-    """
-    Simple API endpoint used to check whether
-    the Velora backend is working.
-    """
 
     return Response({
         "status": "success",
@@ -23,15 +27,20 @@ def velora_status(request):
     })
 
 
+# ==========================================
+# USER REGISTRATION
+# ==========================================
+
 @api_view(["POST"])
 def register_user(request):
-    """
-    Creates a new Velora user account.
-    """
 
-    serializer = RegisterSerializer(data=request.data)
+    serializer = RegisterSerializer(
+        data=request.data
+    )
+
 
     if serializer.is_valid():
+
         user = serializer.save()
 
         return Response(
@@ -42,35 +51,196 @@ def register_user(request):
             status=status.HTTP_201_CREATED,
         )
 
+
     return Response(
         serializer.errors,
         status=status.HTTP_400_BAD_REQUEST,
     )
 
 
+# ==========================================
+# MARKET PRICE
+# ==========================================
+
+@api_view(["GET"])
+def market_price(request, ticker):
+    """
+    Return the latest market price
+    and currency of a stock.
+    """
+
+    market_data = get_stock_price(ticker)
+
+
+    if market_data is None:
+
+        return Response(
+            {
+                "error": (
+                    "Unable to find market data "
+                    "for this ticker."
+                )
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+    return Response(market_data)
+
+
+# ==========================================
+# CURRENCY EXCHANGE RATE
+# ==========================================
+
+@api_view(["GET"])
+def exchange_rate(
+    request,
+    from_currency,
+    to_currency="INR",
+):
+    """
+    Return the current exchange rate.
+
+    Example:
+
+        USD -> INR
+
+    Response:
+
+        {
+            "from_currency": "USD",
+            "to_currency": "INR",
+            "rate": 83.50
+        }
+    """
+
+    rate = get_exchange_rate(
+        from_currency.upper(),
+        to_currency.upper(),
+    )
+
+
+    if rate is None:
+
+        return Response(
+            {
+                "error": (
+                    "Unable to fetch exchange rate."
+                )
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+    return Response(
+        {
+            "from_currency":
+                from_currency.upper(),
+
+            "to_currency":
+                to_currency.upper(),
+
+            "rate": rate,
+        }
+    )
+    
+# ==========================================
+# HISTORICAL MARKET DATA
+# ==========================================
+
+@api_view(["GET"])
+def historical_prices(request, ticker):
+    """
+    Return historical closing prices
+    for a stock.
+
+    Example:
+        /api/historical-prices/TCS/?period=1mo
+    """
+
+    # Get the requested period.
+    # If the frontend doesn't provide one,
+    # use 1 month.
+    period = request.query_params.get(
+        "period",
+        "1mo"
+    )
+
+    # Only allow periods that we
+    # currently support.
+    allowed_periods = [
+        "1mo",
+        "3mo",
+        "6mo",
+        "1y",
+    ]
+
+    if period not in allowed_periods:
+
+        return Response(
+            {
+                "error": (
+                    "Invalid period. "
+                    "Use 1mo, 3mo, "
+                    "6mo, or 1y."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    data = get_historical_prices(
+        ticker,
+        period
+    )
+
+    if not data:
+
+        return Response(
+            {
+                "error": (
+                    "Unable to fetch "
+                    "historical data."
+                )
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    return Response(
+        {
+            "ticker":
+                ticker.upper(),
+
+            "period":
+                period,
+
+            "data":
+                data,
+        }
+    )
+
+
+# ==========================================
+# HOLDINGS
+# ==========================================
+
 class HoldingViewSet(viewsets.ModelViewSet):
-    """
-    Provides CRUD operations for portfolio holdings.
-    """
 
-    # Only logged-in users can access this API.
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated
+    ]
 
-    # Convert Holding objects to/from JSON.
     serializer_class = HoldingSerializer
 
-    def get_queryset(self):
-        """
-        Return ONLY the holdings belonging to
-        the currently logged-in user.
-        """
 
-        return Holding.objects.filter(user=self.request.user)
+    def get_queryset(self):
+
+        return Holding.objects.filter(
+            user=self.request.user
+        )
+
 
     def perform_create(self, serializer):
-        """
-        Automatically attach the new holding
-        to the currently logged-in user.
-        """
 
-        serializer.save(user=self.request.user)
+        serializer.save(
+            user=self.request.user
+        )
