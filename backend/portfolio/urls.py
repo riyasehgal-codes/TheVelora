@@ -2,13 +2,15 @@
 
 from django.urls import path, include
 
+
 from .views import (
     velora_status,
     register_user,
+    HoldingViewSet,
     market_price,
     exchange_rate,
     historical_prices,
-    HoldingViewSet,
+    forecast,
 )
 
 from rest_framework_simplejwt.views import (
@@ -71,6 +73,11 @@ urlpatterns = [
     path(
         "historical-prices/<str:ticker>/",
         historical_prices
+    ),
+    
+    path(
+        "forecast/<str:ticker>/",
+        forecast
     ),
 
     path(

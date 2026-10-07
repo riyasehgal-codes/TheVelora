@@ -110,3 +110,15 @@ export const getHistoricalPrices = async (
 
 
 export default api;
+
+export const getForecast = async (
+  ticker
+) => {
+
+  const response = await api.get(
+    `/forecast/${ticker}/`
+  );
+
+  return response.data;
+
+};

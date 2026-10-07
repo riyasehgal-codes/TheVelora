@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Portfolio from "./pages/Portfolio";
+import Forecast from "./pages/Forecast";
 
 // Protects pages that require login
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -58,6 +59,15 @@ function App() {
         }
       />
 
+      <Route
+        path="/forecast"
+        element={
+          <ProtectedRoute>
+            <Forecast />
+          </ProtectedRoute>
+        }
+      />
+
 
       {/* ========================= */}
       {/* FUTURE ROUTES */}
@@ -67,7 +77,7 @@ function App() {
         We will add these pages later
         as we progress through Velora:
 
-        /forecast
+        /forecast - DONE
         /news
         /alerts
         /velora-ai

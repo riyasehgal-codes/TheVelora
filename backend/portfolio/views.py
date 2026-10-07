@@ -13,6 +13,8 @@ from .market_data import (
     get_historical_prices,
 )
 
+from .forecast import forecast_stock_price
+
 # ==========================================
 # VELORA STATUS
 # ==========================================
@@ -244,3 +246,33 @@ class HoldingViewSet(viewsets.ModelViewSet):
         serializer.save(
             user=self.request.user
         )
+        
+# ==========================================
+@api_view(["GET"])
+def forecast(request, ticker):
+    """
+    Generate a 7-day stock price forecast.
+
+    Example:
+        /api/forecast/TCS/
+    """
+
+    result = forecast_stock_price(
+        ticker,
+        days=7
+    )
+
+    # If forecasting failed,
+    # return the error to React.
+
+    if "error" in result:
+
+        return Response(
+            result,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    return Response(
+        result,
+        status=status.HTTP_200_OK
+    )
