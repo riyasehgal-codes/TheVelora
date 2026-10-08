@@ -49,3 +49,54 @@ class Holding(models.Model):
         """
 
         return f"{self.ticker} - {self.quantity} shares"
+    
+    
+class Alert(models.Model):
+    """
+    Stores a price alert created by a Velora user.
+    """
+
+    CONDITION_CHOICES = [
+        ("above", "Price goes above"),
+        ("below", "Price goes below"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="alerts",
+    )
+
+    ticker = models.CharField(
+        max_length=20
+    )
+
+    target_price = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+    )
+
+    condition = models.CharField(
+        max_length=10,
+        choices=CONDITION_CHOICES,
+    )
+
+    triggered = models.BooleanField(
+        default=False
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    triggered_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return (
+            f"{self.ticker} "
+            f"{self.condition} "
+            f"{self.target_price}"
+        )

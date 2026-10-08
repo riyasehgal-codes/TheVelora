@@ -1,171 +1,195 @@
-# forecast.py
-
-import numpy as np
+import yfinance as yf
 import pandas as pd
 
 from statsmodels.tsa.arima.model import ARIMA
 
-from .market_data import get_historical_prices
 
+# ============================================================
+# TICKER NORMALIZATION
+# ============================================================
 
-def forecast_stock_price(ticker, days=7):
+def normalize_ticker(ticker):
     """
-    Generate a short-term stock price forecast.
+    Converts common Indian stock symbols into Yahoo Finance
+    NSE symbols.
 
-    Parameters:
-        ticker: Stock ticker symbol
-        days: Number of future days to forecast
+    Example:
+        TCS -> TCS.NS
+        RELIANCE -> RELIANCE.NS
+        AAPL -> AAPL
+    """
+
+    ticker = ticker.upper().strip()
+
+    # Already has an exchange suffix
+    if "." in ticker:
+        return ticker
+
+    # Common Indian stocks
+    indian_stocks = [
+        "TCS",
+        "RELIANCE",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "ITC",
+        "HINDUNILVR",
+        "WIPRO",
+        "BHARTIARTL",
+        "KOTAKBANK",
+        "LT",
+        "AXISBANK",
+        "MARUTI",
+        "SUNPHARMA",
+        "TATAMOTORS",
+        "TATASTEEL",
+        "ADANIENT",
+        "ADANIPORTS",
+    ]
+
+    if ticker in indian_stocks:
+        return f"{ticker}.NS"
+
+    return ticker
+
+
+# ============================================================
+# FORECAST
+# ============================================================
+
+def get_forecast(ticker):
+    """
+    Generates a 7-day stock price forecast using ARIMA.
+
+    Model:
+        ARIMA(5, 1, 0)
+
+    Historical data:
+        Approximately 6 months
 
     Returns:
-        Dictionary containing:
-        - current price
-        - predicted prices
-        - confidence ranges
-        - trend
-        - expected percentage change
+        Current price
+        7-day predictions
+        Confidence intervals
+        Expected trend
+        Expected percentage change
     """
 
-    # ==========================================
-    # GET HISTORICAL DATA
-    # ==========================================
+    original_ticker = ticker.upper().strip()
 
-    historical_data = get_historical_prices(
-        ticker,
-        period="6mo"
+    yahoo_ticker = normalize_ticker(
+        original_ticker
     )
 
-    if not historical_data:
+    # --------------------------------------------------------
+    # Get historical data
+    # --------------------------------------------------------
 
-        return {
-            "error": "Unable to fetch historical stock data."
-        }
-
-
-    # ==========================================
-    # CONVERT TO DATAFRAME
-    # ==========================================
-
-    df = pd.DataFrame(
-        historical_data
+    stock = yf.Ticker(
+        yahoo_ticker
     )
 
-    if df.empty or len(df) < 30:
+    history = stock.history(
+        period="6mo",
+        auto_adjust=True
+    )
 
-        return {
-            "error": (
-                "Not enough historical data "
-                "to generate a forecast."
+    # --------------------------------------------------------
+    # Fallback
+    # --------------------------------------------------------
+
+    if history.empty:
+
+        # If NSE ticker failed, try the original ticker
+        if yahoo_ticker != original_ticker:
+
+            stock = yf.Ticker(
+                original_ticker
             )
-        }
 
+            history = stock.history(
+                period="6mo",
+                auto_adjust=True
+            )
 
-    # ==========================================
-    # CLEAN DATA
-    # ==========================================
+    if history.empty:
 
-    df["date"] = pd.to_datetime(
-        df["date"]
-    )
+        raise ValueError(
+            f"No historical market data found for {original_ticker}."
+        )
 
-    df["price"] = pd.to_numeric(
-        df["price"],
+    # --------------------------------------------------------
+    # Extract closing prices
+    # --------------------------------------------------------
+
+    prices = history["Close"].dropna()
+
+    if len(prices) < 30:
+
+        raise ValueError(
+            "Not enough historical data to generate a forecast."
+        )
+
+    # Make sure prices are numeric
+    prices = pd.to_numeric(
+        prices,
         errors="coerce"
-    )
+    ).dropna()
 
-    df = df.dropna(
-        subset=["price"]
-    )
+    if prices.empty:
 
-    df = df.sort_values(
-        "date"
-    )
-
-    df = df.reset_index(
-        drop=True
-    )
-
-
-    # ==========================================
-    # PREPARE PRICE SERIES
-    # ==========================================
-
-    prices = df["price"].astype(float)
-
-
-    # ==========================================
-    # CREATE ARIMA MODEL
-    # ==========================================
-
-    try:
-
-        model = ARIMA(
-            prices,
-            order=(5, 1, 0)
+        raise ValueError(
+            "Unable to process historical stock prices."
         )
 
-        model_fit = model.fit()
+    # --------------------------------------------------------
+    # Current price
+    # --------------------------------------------------------
 
-
-        # Generate forecast object.
-
-        forecast_result = (
-            model_fit.get_forecast(
-                steps=days
-            )
-        )
-
-
-        # Predicted prices.
-
-        forecast_mean = (
-            forecast_result.predicted_mean
-        )
-
-
-        # 95% confidence intervals.
-
-        confidence_intervals = (
-            forecast_result.conf_int(
-                alpha=0.05
-            )
-        )
-
-
-    except Exception as error:
-
-        return {
-            "error": (
-                f"Forecasting failed: {str(error)}"
-            )
-        }
-
-
-    # ==========================================
-    # CREATE FUTURE DATES
-    # ==========================================
-
-    last_date = df["date"].iloc[-1]
-
-    forecast_dates = pd.date_range(
-        start=last_date + pd.Timedelta(days=1),
-        periods=days,
-        freq="D"
+    current_price = float(
+        prices.iloc[-1]
     )
 
+    # --------------------------------------------------------
+    # ARIMA MODEL
+    # --------------------------------------------------------
 
-    # ==========================================
-    # FORMAT FORECAST DATA
-    # ==========================================
+    model = ARIMA(
+        prices,
+        order=(5, 1, 0)
+    )
+
+    fitted_model = model.fit()
+
+    # --------------------------------------------------------
+    # Generate 7-day forecast
+    # --------------------------------------------------------
+
+    forecast_result = fitted_model.get_forecast(
+        steps=7
+    )
+
+    forecast_values = forecast_result.predicted_mean
+
+    confidence_intervals = (
+        forecast_result.conf_int(
+            alpha=0.05
+        )
+    )
+
+    # --------------------------------------------------------
+    # Build forecast response
+    # --------------------------------------------------------
 
     forecast_data = []
 
+    last_date = prices.index[-1]
 
-    for index, date in enumerate(
-        forecast_dates
-    ):
+    for index in range(7):
 
         predicted_price = float(
-            forecast_mean.iloc[index]
+            forecast_values.iloc[index]
         )
 
         lower_bound = float(
@@ -182,123 +206,95 @@ def forecast_stock_price(ticker, days=7):
             ]
         )
 
-
-        # Make sure prices don't
-        # become negative.
-
-        lower_bound = max(
-            0,
-            lower_bound
+        forecast_date = (
+            last_date +
+            pd.Timedelta(
+                days=index + 1
+            )
         )
 
-        upper_bound = max(
-            0,
-            upper_bound
+        forecast_data.append(
+            {
+                "date": forecast_date.strftime(
+                    "%Y-%m-%d"
+                ),
+
+                "predicted_price": round(
+                    predicted_price,
+                    2
+                ),
+
+                "lower_bound": round(
+                    lower_bound,
+                    2
+                ),
+
+                "upper_bound": round(
+                    upper_bound,
+                    2
+                ),
+            }
         )
 
+    # --------------------------------------------------------
+    # Expected change
+    # --------------------------------------------------------
 
-        forecast_data.append({
-
-            "date": date.strftime(
-                "%Y-%m-%d"
-            ),
-
-            "predicted_price": round(
-                predicted_price,
-                2
-            ),
-
-            "lower_bound": round(
-                lower_bound,
-                2
-            ),
-
-            "upper_bound": round(
-                upper_bound,
-                2
-            ),
-
-        })
-
-
-    # ==========================================
-    # CURRENT PRICE
-    # ==========================================
-
-    current_price = float(
-        prices.iloc[-1]
+    final_prediction = float(
+        forecast_values.iloc[-1]
     )
 
+    expected_change = (
+        (
+            final_prediction -
+            current_price
+        )
+        / current_price
+    ) * 100
 
-    # ==========================================
-    # FINAL PREDICTED PRICE
-    # ==========================================
+    # --------------------------------------------------------
+    # Determine trend
+    # --------------------------------------------------------
 
-    predicted_final_price = float(
-        forecast_mean.iloc[-1]
-    )
-
-
-    # ==========================================
-    # DETERMINE TREND
-    # ==========================================
-
-    if predicted_final_price > current_price:
-
+    if expected_change > 1:
         trend = "Upward"
 
-    elif predicted_final_price < current_price:
-
+    elif expected_change < -1:
         trend = "Downward"
 
     else:
-
         trend = "Stable"
 
-
-    # ==========================================
-    # EXPECTED PERCENTAGE CHANGE
-    # ==========================================
-
-    if current_price != 0:
-
-        expected_change = (
-            (
-                predicted_final_price
-                - current_price
-            )
-            / current_price
-        ) * 100
-
-    else:
-
-        expected_change = 0
-
-
-    # ==========================================
-    # RETURN RESULT
-    # ==========================================
+    # --------------------------------------------------------
+    # Final response
+    # --------------------------------------------------------
 
     return {
 
-        "ticker": ticker.upper(),
+        "ticker": original_ticker,
+
+        "yahoo_ticker": yahoo_ticker,
 
         "current_price": round(
             current_price,
             2
         ),
 
-        "forecast_days": days,
-
-        "trend": trend,
-
-        "expected_change_percent": round(
+        "expected_change": round(
             expected_change,
             2
         ),
+
+        "trend": trend,
 
         "confidence_level": "95%",
 
         "forecast": forecast_data,
 
+        "model": {
+            "name": "ARIMA",
+            "order": "(5, 1, 0)",
+            "historical_period": "6 months",
+            "forecast_period": "7 days",
+        },
     }

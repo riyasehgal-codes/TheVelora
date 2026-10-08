@@ -1,278 +1,288 @@
-# views.py
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer, HoldingSerializer
-from .models import Holding
+from .models import Holding, Alert
+
+from .serializers import (
+    RegisterSerializer,
+    HoldingSerializer,
+    AlertSerializer,
+)
+
 from .market_data import (
     get_stock_price,
     get_exchange_rate,
     get_historical_prices,
 )
 
-from .forecast import forecast_stock_price
+from .forecast import get_forecast
 
-# ==========================================
-# VELORA STATUS
-# ==========================================
-
-@api_view(["GET"])
-def velora_status(request):
-
-    return Response({
-        "status": "success",
-        "message": "Velora backend is running!",
-        "app": "Velora",
-    })
+from .news import get_stock_news
 
 
-# ==========================================
+# ============================================================
 # USER REGISTRATION
-# ==========================================
+# ============================================================
 
-@api_view(["POST"])
-def register_user(request):
+class RegisterView(APIView):
+    """
+    Handles new user registration.
+    """
 
-    serializer = RegisterSerializer(
-        data=request.data
-    )
+    permission_classes = [AllowAny]
 
+    def post(self, request):
 
-    if serializer.is_valid():
-
-        user = serializer.save()
-
-        return Response(
-            {
-                "message": "User registered successfully!",
-                "username": user.username,
-            },
-            status=status.HTTP_201_CREATED,
+        serializer = RegisterSerializer(
+            data=request.data
         )
 
+        if serializer.is_valid():
 
-    return Response(
-        serializer.errors,
-        status=status.HTTP_400_BAD_REQUEST,
-    )
+            serializer.save()
 
-
-# ==========================================
-# MARKET PRICE
-# ==========================================
-
-@api_view(["GET"])
-def market_price(request, ticker):
-    """
-    Return the latest market price
-    and currency of a stock.
-    """
-
-    market_data = get_stock_price(ticker)
-
-
-    if market_data is None:
+            return Response(
+                {
+                    "message": "User registered successfully."
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
         return Response(
-            {
-                "error": (
-                    "Unable to find market data "
-                    "for this ticker."
-                )
-            },
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-
-    return Response(market_data)
-
-
-# ==========================================
-# CURRENCY EXCHANGE RATE
-# ==========================================
-
-@api_view(["GET"])
-def exchange_rate(
-    request,
-    from_currency,
-    to_currency="INR",
-):
-    """
-    Return the current exchange rate.
-
-    Example:
-
-        USD -> INR
-
-    Response:
-
-        {
-            "from_currency": "USD",
-            "to_currency": "INR",
-            "rate": 83.50
-        }
-    """
-
-    rate = get_exchange_rate(
-        from_currency.upper(),
-        to_currency.upper(),
-    )
-
-
-    if rate is None:
-
-        return Response(
-            {
-                "error": (
-                    "Unable to fetch exchange rate."
-                )
-            },
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-
-    return Response(
-        {
-            "from_currency":
-                from_currency.upper(),
-
-            "to_currency":
-                to_currency.upper(),
-
-            "rate": rate,
-        }
-    )
-    
-# ==========================================
-# HISTORICAL MARKET DATA
-# ==========================================
-
-@api_view(["GET"])
-def historical_prices(request, ticker):
-    """
-    Return historical closing prices
-    for a stock.
-
-    Example:
-        /api/historical-prices/TCS/?period=1mo
-    """
-
-    # Get the requested period.
-    # If the frontend doesn't provide one,
-    # use 1 month.
-    period = request.query_params.get(
-        "period",
-        "1mo"
-    )
-
-    # Only allow periods that we
-    # currently support.
-    allowed_periods = [
-        "1mo",
-        "3mo",
-        "6mo",
-        "1y",
-    ]
-
-    if period not in allowed_periods:
-
-        return Response(
-            {
-                "error": (
-                    "Invalid period. "
-                    "Use 1mo, 3mo, "
-                    "6mo, or 1y."
-                )
-            },
+            serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    data = get_historical_prices(
-        ticker,
-        period
-    )
 
-    if not data:
-
-        return Response(
-            {
-                "error": (
-                    "Unable to fetch "
-                    "historical data."
-                )
-            },
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-    return Response(
-        {
-            "ticker":
-                ticker.upper(),
-
-            "period":
-                period,
-
-            "data":
-                data,
-        }
-    )
-
-
-# ==========================================
+# ============================================================
 # HOLDINGS
-# ==========================================
+# ============================================================
 
 class HoldingViewSet(viewsets.ModelViewSet):
+    """
+    Handles CRUD operations for portfolio holdings.
+
+    Each user can only see and modify their own holdings.
+    """
+
+    serializer_class = HoldingSerializer
 
     permission_classes = [
         IsAuthenticated
     ]
 
-    serializer_class = HoldingSerializer
-
-
     def get_queryset(self):
 
         return Holding.objects.filter(
             user=self.request.user
-        )
-
+        ).order_by("-created_at")
 
     def perform_create(self, serializer):
 
         serializer.save(
             user=self.request.user
         )
-        
-# ==========================================
-@api_view(["GET"])
-def forecast(request, ticker):
+
+
+# ============================================================
+# ALERTS
+# ============================================================
+
+class AlertViewSet(viewsets.ModelViewSet):
     """
-    Generate a 7-day stock price forecast.
+    Handles CRUD operations for stock price alerts.
 
-    Example:
-        /api/forecast/TCS/
+    Each user can only see and modify their own alerts.
     """
 
-    result = forecast_stock_price(
-        ticker,
-        days=7
-    )
+    serializer_class = AlertSerializer
 
-    # If forecasting failed,
-    # return the error to React.
+    permission_classes = [
+        IsAuthenticated
+    ]
 
-    if "error" in result:
+    def get_queryset(self):
 
-        return Response(
-            result,
-            status=status.HTTP_400_BAD_REQUEST
+        return Alert.objects.filter(
+            user=self.request.user
+        ).order_by("-created_at")
+
+    def perform_create(self, serializer):
+
+        serializer.save(
+            user=self.request.user
         )
 
+
+# ============================================================
+# BASIC API STATUS
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stock_status(request):
+
     return Response(
-        result,
-        status=status.HTTP_200_OK
+        {
+            "status": "Velora API is running"
+        }
     )
+
+
+# ============================================================
+# LIVE MARKET PRICE
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def market_price(request, ticker):
+
+    try:
+
+        data = get_stock_price(
+            ticker
+        )
+
+        return Response(data)
+
+    except Exception as error:
+
+        return Response(
+            {
+                "error": str(error)
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+# ============================================================
+# EXCHANGE RATE
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def exchange_rate(
+    request,
+    from_currency,
+    to_currency
+):
+
+    try:
+
+        data = get_exchange_rate(
+            from_currency,
+            to_currency
+        )
+
+        return Response(data)
+
+    except Exception as error:
+
+        return Response(
+            {
+                "error": str(error)
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+# ============================================================
+# HISTORICAL PRICES
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def historical_prices(
+    request,
+    ticker
+):
+
+    period = request.query_params.get(
+        "period",
+        "1mo"
+    )
+
+    try:
+
+        data = get_historical_prices(
+            ticker,
+            period
+        )
+
+        return Response(data)
+
+    except Exception as error:
+
+        return Response(
+            {
+                "error": str(error)
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+# ============================================================
+# STOCK FORECAST
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def forecast_stock(
+    request,
+    ticker
+):
+
+    try:
+
+        data = get_forecast(
+            ticker
+        )
+
+        return Response(data)
+
+    except Exception as error:
+
+        return Response(
+            {
+                "error": str(error)
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+# ============================================================
+# STOCK NEWS
+# ============================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def stock_news(
+    request,
+    ticker
+):
+
+    try:
+
+        news = get_stock_news(
+            ticker
+        )
+
+        return Response(
+            {
+                "ticker": ticker.upper(),
+                "count": len(news),
+                "news": news,
+            }
+        )
+
+    except Exception as error:
+
+        return Response(
+            {
+                "error": str(error)
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )

@@ -3,27 +3,22 @@
 import axios from "axios";
 
 
-/*
-  Create one Axios instance for
-  communicating with Django.
-*/
 const api = axios.create({
 
   baseURL:
     "http://127.0.0.1:8000/api",
 
   headers: {
-    "Content-Type":
-      "application/json",
+    "Content-Type": "application/json",
   },
 
 });
 
 
-/*
-  Automatically attach the JWT access
-  token to authenticated requests.
-*/
+// ============================================================
+// JWT AUTHENTICATION
+// ============================================================
+
 api.interceptors.request.use(
 
   (config) => {
@@ -33,14 +28,12 @@ api.interceptors.request.use(
         "accessToken"
       );
 
-
     if (token) {
 
       config.headers.Authorization =
         `Bearer ${token}`;
 
     }
-
 
     return config;
 
@@ -55,10 +48,10 @@ api.interceptors.request.use(
 );
 
 
-/*
-  Get the latest market price
-  of a stock.
-*/
+// ============================================================
+// MARKET PRICE
+// ============================================================
+
 export const getMarketPrice = async (
   ticker
 ) => {
@@ -67,16 +60,15 @@ export const getMarketPrice = async (
     `/market-price/${ticker}/`
   );
 
-
   return response.data;
 
 };
 
 
-/*
-  Get the exchange rate between
-  two currencies.
-*/
+// ============================================================
+// EXCHANGE RATE
+// ============================================================
+
 export const getExchangeRate = async (
   fromCurrency,
   toCurrency = "INR"
@@ -86,10 +78,14 @@ export const getExchangeRate = async (
     `/exchange-rate/${fromCurrency}/${toCurrency}/`
   );
 
-
   return response.data;
 
 };
+
+
+// ============================================================
+// HISTORICAL PRICES
+// ============================================================
 
 export const getHistoricalPrices = async (
   ticker,
@@ -106,10 +102,13 @@ export const getHistoricalPrices = async (
   );
 
   return response.data;
+
 };
 
 
-export default api;
+// ============================================================
+// FORECAST
+// ============================================================
 
 export const getForecast = async (
   ticker
@@ -122,3 +121,69 @@ export const getForecast = async (
   return response.data;
 
 };
+
+
+// ============================================================
+// NEWS
+// ============================================================
+
+export const getStockNews = async (
+  ticker
+) => {
+
+  const response = await api.get(
+    `/news/${ticker}/`
+  );
+
+  return response.data;
+
+};
+
+
+// ============================================================
+// ALERTS
+// ============================================================
+
+export const getAlerts = async () => {
+
+  const response = await api.get(
+    "/alerts/"
+  );
+
+  return response.data;
+
+};
+
+
+export const createAlert = async (
+  alertData
+) => {
+
+  const response = await api.post(
+    "/alerts/",
+    alertData
+  );
+
+  return response.data;
+
+};
+
+
+export const deleteAlert = async (
+  alertId
+) => {
+
+  const response = await api.delete(
+    `/alerts/${alertId}/`
+  );
+
+  return response.data;
+
+};
+
+
+// ============================================================
+// EXPORT AXIOS INSTANCE
+// ============================================================
+
+export default api;

@@ -1,45 +1,41 @@
-// App.jsx
-
 import { Routes, Route } from "react-router-dom";
 
-// Pages
 import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Portfolio from "./pages/Portfolio";
 import Forecast from "./pages/Forecast";
+import News from "./pages/News";
+import Alerts from "./pages/Alerts";
 
-// Protects pages that require login
 import ProtectedRoute from "./components/ProtectedRoute";
 
 
 function App() {
 
   return (
+
     <Routes>
 
-      {/* ========================= */}
+      {/* ================================================ */}
       {/* PUBLIC ROUTES */}
-      {/* ========================= */}
+      {/* ================================================ */}
 
-      {/* Registration page */}
       <Route
         path="/register"
         element={<Register />}
       />
 
-      {/* Login page */}
       <Route
         path="/login"
         element={<Login />}
       />
 
 
-      {/* ========================= */}
+      {/* ================================================ */}
       {/* PROTECTED ROUTES */}
-      {/* ========================= */}
+      {/* ================================================ */}
 
-      {/* Dashboard */}
       <Route
         path="/"
         element={
@@ -49,7 +45,7 @@ function App() {
         }
       />
 
-      {/* Portfolio */}
+
       <Route
         path="/portfolio"
         element={
@@ -58,6 +54,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
 
       <Route
         path="/forecast"
@@ -69,24 +66,29 @@ function App() {
       />
 
 
-      {/* ========================= */}
-      {/* FUTURE ROUTES */}
-      {/* ========================= */}
+      <Route
+        path="/news"
+        element={
+          <ProtectedRoute>
+            <News />
+          </ProtectedRoute>
+        }
+      />
 
-      {/*
-        We will add these pages later
-        as we progress through Velora:
 
-        /forecast - DONE
-        /news
-        /alerts
-        /velora-ai
-        /settings
-      */}
-
+      <Route
+        path="/alerts"
+        element={
+          <ProtectedRoute>
+            <Alerts />
+          </ProtectedRoute>
+        }
+      />
 
     </Routes>
+
   );
+
 }
 
 

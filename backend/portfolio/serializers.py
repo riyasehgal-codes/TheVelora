@@ -1,5 +1,5 @@
 # serializers.py
-from .models import Holding
+from .models import Holding, Alert
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
@@ -58,3 +58,29 @@ class HoldingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+class AlertSerializer(serializers.ModelSerializer):
+    """
+    Converts Alert model data into JSON
+    and validates alert data from React.
+    """
+
+    class Meta:
+        model = Alert
+
+        fields = [
+            "id",
+            "ticker",
+            "target_price",
+            "condition",
+            "triggered",
+            "created_at",
+            "triggered_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "triggered",
+            "created_at",
+            "triggered_at",
+        ]   
