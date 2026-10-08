@@ -19,7 +19,7 @@ from .market_data import (
 )
 
 from .forecast import get_forecast
-
+from .alerts import check_all_alerts
 from .news import get_stock_news
 
 
@@ -286,3 +286,61 @@ def stock_news(
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+        
+# ============================================================
+# CHECK ALERTS
+# ============================================================
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def check_alerts(request):
+    """
+    Manually checks the logged-in user's active alerts.
+
+    This endpoint is mainly useful for testing the
+    alert-checking system before automation is added.
+    """
+
+    from .models import Alert
+
+    active_alerts = Alert.objects.filter(
+        user=request.user,
+        triggered=False,
+    )
+
+    triggered = []
+
+    for alert in active_alerts:
+
+        try:
+
+            if check_all_alerts():
+
+                triggered.append(
+                    {
+                        "id": alert.id,
+                        "ticker": alert.ticker,
+                        "target_price": str(
+                            alert.target_price
+                        ),
+                        "condition": alert.condition,
+                        "triggered_at": (
+                            alert.triggered_at
+                        ),
+                    }
+                )
+
+        except Exception as error:
+
+            print(
+                f"Error checking alert "
+                f"{alert.id}: {error}"
+            )
+
+    return Response(
+        {
+            "checked": active_alerts.count(),
+            "triggered": len(triggered),
+            "alerts": triggered,
+        }
+    )

@@ -17,6 +17,7 @@ from .views import (
     historical_prices,
     forecast_stock,
     stock_news,
+    check_alerts,
 )
 
 
@@ -135,5 +136,11 @@ urlpatterns = [
         "news/<str:ticker>/",
         stock_news,
         name="stock_news",
+    ),
+    
+    path(
+        "alerts/check/",
+        check_alerts,
+        name="check_alerts",
     ),
 ]

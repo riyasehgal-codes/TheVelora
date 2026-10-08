@@ -181,6 +181,16 @@ export const deleteAlert = async (
 
 };
 
+export const checkAlerts = async () => {
+
+  const response = await api.post(
+    "/alerts/check/"
+  );
+
+  return response.data;
+
+};
+
 
 // ============================================================
 // EXPORT AXIOS INSTANCE
