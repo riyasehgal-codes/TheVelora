@@ -615,6 +615,26 @@ function Alerts() {
               Your Created Alerts
             </h2>
 
+
+            <button
+              onClick={async () => {
+                try {
+                  const response = await api.post("/alerts/check/");
+                  alert(JSON.stringify(response.data, null, 2));
+                } catch (error) {
+                  alert(
+                    error.response?.data
+                      ? JSON.stringify(error.response.data, null, 2)
+                      : error.message
+                  );
+                }
+              }}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white"
+            >
+              Check Alerts Now
+            </button>
+
+
             <p className="mt-1 text-xs text-slate-500">
               {alerts.length} alert
               {alerts.length !== 1
@@ -761,6 +781,7 @@ function Alerts() {
   );
 
 }
+
 
 
 export default Alerts;

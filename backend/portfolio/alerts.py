@@ -1,8 +1,14 @@
+
+import logging
+
 import yfinance as yf
 
 from django.utils import timezone
 
 from .models import Alert
+
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -14,13 +20,15 @@ def normalize_ticker(ticker):
     Converts common Indian stock tickers into Yahoo Finance
     NSE tickers.
 
-    Example:
+    Examples:
         TCS -> TCS.NS
         AAPL -> AAPL
+        TCS.NS -> TCS.NS
     """
 
     ticker = ticker.upper().strip()
 
+    # Preserve tickers that already specify an exchange.
     if "." in ticker:
         return ticker
 
@@ -53,39 +61,67 @@ def normalize_ticker(ticker):
 
 
 # ============================================================
-# GET CURRENT STOCK PRICE
+# GET LATEST AVAILABLE PRICE
 # ============================================================
 
 def get_current_price(ticker):
     """
-    Gets the latest available market price from Yahoo Finance.
+    Attempts to obtain a recent price from Yahoo Finance.
+
+    First tries intraday data. If that is unavailable,
+    falls back to recent daily closing prices.
+
+    Note:
+    Outside market hours, the returned price may be the
+    latest available close rather than a live price.
     """
 
     yahoo_ticker = normalize_ticker(ticker)
+    stock = yf.Ticker(yahoo_ticker)
 
-    stock = yf.Ticker(
-        yahoo_ticker
-    )
-
-    history = stock.history(
-        period="1d",
-        interval="1m"
-    )
-
-    if history.empty:
-        raise ValueError(
-            f"Unable to get current price for {ticker}."
+    # First attempt: recent intraday prices.
+    try:
+        history = stock.history(
+            period="1d",
+            interval="1m",
         )
 
-    prices = history["Close"].dropna()
+        if not history.empty:
+            prices = history["Close"].dropna()
 
-    if prices.empty:
-        raise ValueError(
-            f"No price data available for {ticker}."
+            if not prices.empty:
+                return float(prices.iloc[-1])
+
+    except Exception as error:
+        logger.warning(
+            "Intraday price lookup failed for %s: %s",
+            yahoo_ticker,
+            error,
         )
 
-    return float(
-        prices.iloc[-1]
+    # Fallback: most recent available daily close.
+    try:
+        history = stock.history(
+            period="5d",
+            interval="1d",
+        )
+
+        if not history.empty:
+            prices = history["Close"].dropna()
+
+            if not prices.empty:
+                return float(prices.iloc[-1])
+
+    except Exception as error:
+        logger.warning(
+            "Daily price lookup failed for %s: %s",
+            yahoo_ticker,
+            error,
+        )
+
+    raise ValueError(
+        f"Unable to retrieve a recent price for {ticker}. "
+        "Yahoo Finance returned no usable price data."
     )
 
 
@@ -95,29 +131,17 @@ def get_current_price(ticker):
 
 def check_alert(alert):
     """
-    Checks whether a single alert condition has been met.
+    Checks one alert.
 
-    Returns:
-        True  -> alert triggered
-        False -> alert still active
+    Returns True if this check triggers the alert;
+    otherwise returns False.
     """
 
     if alert.triggered:
         return False
 
-    current_price = get_current_price(
-        alert.ticker
-    )
-
-    target_price = float(
-        alert.target_price
-    )
-
-    triggered = False
-
-    # --------------------------------------------------------
-    # ABOVE
-    # --------------------------------------------------------
+    current_price = get_current_price(alert.ticker)
+    target_price = float(alert.target_price)
 
     if (
         alert.condition == "above"
@@ -125,24 +149,17 @@ def check_alert(alert):
     ):
         triggered = True
 
-    # --------------------------------------------------------
-    # BELOW
-    # --------------------------------------------------------
-
     elif (
         alert.condition == "below"
         and current_price <= target_price
     ):
         triggered = True
 
-    # --------------------------------------------------------
-    # UPDATE ALERT
-    # --------------------------------------------------------
+    else:
+        triggered = False
 
     if triggered:
-
         alert.triggered = True
-
         alert.triggered_at = timezone.now()
 
         alert.save(
@@ -150,6 +167,13 @@ def check_alert(alert):
                 "triggered",
                 "triggered_at",
             ]
+        )
+
+        logger.info(
+            "Alert %s triggered: %s at price %s",
+            alert.id,
+            alert.ticker,
+            current_price,
         )
 
     return triggered
@@ -161,33 +185,32 @@ def check_alert(alert):
 
 def check_all_alerts():
     """
-    Checks every active alert in the database.
+    Checks every active alert.
 
-    Returns a list containing the alerts that
-    were triggered during this check.
+    A failure for one alert does not prevent other alerts
+    from being checked.
+
+    Returns a list of alerts triggered during this check.
     """
 
     active_alerts = Alert.objects.filter(
         triggered=False
-    )
+    ).order_by("created_at")
 
     triggered_alerts = []
 
     for alert in active_alerts:
-
         try:
-
             if check_alert(alert):
+                triggered_alerts.append(alert)
 
-                triggered_alerts.append(
-                    alert
-                )
-
-        except Exception as error:
-
-            print(
-                f"Error checking alert "
-                f"{alert.id}: {error}"
+        except Exception:
+            logger.exception(
+                "Failed to check alert ID %s for ticker %s",
+                alert.id,
+                alert.ticker,
             )
 
     return triggered_alerts
+
+

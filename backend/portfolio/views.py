@@ -1,3 +1,6 @@
+
+from django.utils import timezone
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -5,49 +8,31 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Holding, Alert
-
 from .serializers import (
     RegisterSerializer,
     HoldingSerializer,
     AlertSerializer,
 )
-
 from .market_data import (
     get_stock_price,
     get_exchange_rate,
     get_historical_prices,
 )
-
 from .forecast import get_forecast
-from .alerts import check_all_alerts
+from .alerts import check_alert
 from .news import get_stock_news
 
 
-# ============================================================
-# USER REGISTRATION
-# ============================================================
-
 class RegisterView(APIView):
-    """
-    Handles new user registration.
-    """
-
     permission_classes = [AllowAny]
 
     def post(self, request):
-
-        serializer = RegisterSerializer(
-            data=request.data
-        )
+        serializer = RegisterSerializer(data=request.data)
 
         if serializer.is_valid():
-
             serializer.save()
-
             return Response(
-                {
-                    "message": "User registered successfully."
-                },
+                {"message": "User registered successfully."},
                 status=status.HTTP_201_CREATED,
             )
 
@@ -57,290 +42,155 @@ class RegisterView(APIView):
         )
 
 
-# ============================================================
-# HOLDINGS
-# ============================================================
-
 class HoldingViewSet(viewsets.ModelViewSet):
-    """
-    Handles CRUD operations for portfolio holdings.
-
-    Each user can only see and modify their own holdings.
-    """
-
     serializer_class = HoldingSerializer
-
-    permission_classes = [
-        IsAuthenticated
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-
         return Holding.objects.filter(
             user=self.request.user
         ).order_by("-created_at")
 
     def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
-        serializer.save(
-            user=self.request.user
-        )
-
-
-# ============================================================
-# ALERTS
-# ============================================================
 
 class AlertViewSet(viewsets.ModelViewSet):
-    """
-    Handles CRUD operations for stock price alerts.
-
-    Each user can only see and modify their own alerts.
-    """
-
     serializer_class = AlertSerializer
-
-    permission_classes = [
-        IsAuthenticated
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-
         return Alert.objects.filter(
             user=self.request.user
         ).order_by("-created_at")
 
     def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
-        serializer.save(
-            user=self.request.user
-        )
-
-
-# ============================================================
-# BASIC API STATUS
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def stock_status(request):
+    return Response({"status": "Velora API is running"})
 
-    return Response(
-        {
-            "status": "Velora API is running"
-        }
-    )
-
-
-# ============================================================
-# LIVE MARKET PRICE
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def market_price(request, ticker):
-
     try:
-
-        data = get_stock_price(
-            ticker
-        )
-
-        return Response(data)
-
+        return Response(get_stock_price(ticker))
     except Exception as error:
-
         return Response(
-            {
-                "error": str(error)
-            },
+            {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-
-# ============================================================
-# EXCHANGE RATE
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def exchange_rate(
-    request,
-    from_currency,
-    to_currency
-):
-
+def exchange_rate(request, from_currency, to_currency):
     try:
-
-        data = get_exchange_rate(
-            from_currency,
-            to_currency
-        )
-
-        return Response(data)
-
-    except Exception as error:
-
         return Response(
-            {
-                "error": str(error)
-            },
+            get_exchange_rate(from_currency, to_currency)
+        )
+    except Exception as error:
+        return Response(
+            {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-
-# ============================================================
-# HISTORICAL PRICES
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def historical_prices(
-    request,
-    ticker
-):
-
-    period = request.query_params.get(
-        "period",
-        "1mo"
-    )
+def historical_prices(request, ticker):
+    period = request.query_params.get("period", "1mo")
 
     try:
-
-        data = get_historical_prices(
-            ticker,
-            period
-        )
-
-        return Response(data)
-
-    except Exception as error:
-
         return Response(
-            {
-                "error": str(error)
-            },
+            get_historical_prices(ticker, period)
+        )
+    except Exception as error:
+        return Response(
+            {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-
-# ============================================================
-# STOCK FORECAST
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def forecast_stock(
-    request,
-    ticker
-):
-
+def forecast_stock(request, ticker):
     try:
-
-        data = get_forecast(
-            ticker
-        )
-
-        return Response(data)
-
+        return Response(get_forecast(ticker))
     except Exception as error:
-
         return Response(
-            {
-                "error": str(error)
-            },
+            {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-
-# ============================================================
-# STOCK NEWS
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def stock_news(
-    request,
-    ticker
-):
-
+def stock_news(request, ticker):
     try:
-
-        news = get_stock_news(
-            ticker
-        )
-
-        return Response(
-            {
-                "ticker": ticker.upper(),
-                "count": len(news),
-                "news": news,
-            }
-        )
-
+        news = get_stock_news(ticker)
+        return Response({
+            "ticker": ticker.upper(),
+            "count": len(news),
+            "news": news,
+        })
     except Exception as error:
-
         return Response(
-            {
-                "error": str(error)
-            },
+            {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
-        
-# ============================================================
-# CHECK ALERTS
-# ============================================================
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def check_alerts(request):
     """
-    Manually checks the logged-in user's active alerts.
-
-    This endpoint is mainly useful for testing the
-    alert-checking system before automation is added.
+    Check only the logged-in user's active alerts.
     """
 
-    from .models import Alert
-
-    active_alerts = Alert.objects.filter(
-        user=request.user,
-        triggered=False,
+    active_alerts = list(
+        Alert.objects.filter(
+            user=request.user,
+            triggered=False,
+        ).order_by("created_at")
     )
 
-    triggered = []
+    triggered_alerts = []
+    failures = []
 
     for alert in active_alerts:
-
         try:
+            was_triggered = check_alert(alert)
 
-            if check_all_alerts():
-
-                triggered.append(
-                    {
-                        "id": alert.id,
-                        "ticker": alert.ticker,
-                        "target_price": str(
-                            alert.target_price
-                        ),
-                        "condition": alert.condition,
-                        "triggered_at": (
-                            alert.triggered_at
-                        ),
-                    }
-                )
+            if was_triggered:
+                triggered_alerts.append({
+                    "id": alert.id,
+                    "ticker": alert.ticker,
+                    "target_price": str(alert.target_price),
+                    "condition": alert.condition,
+                    "triggered": True,
+                    "triggered_at": (
+                        alert.triggered_at.isoformat()
+                        if alert.triggered_at
+                        else timezone.now().isoformat()
+                    ),
+                })
 
         except Exception as error:
+            failures.append({
+                "id": alert.id,
+                "ticker": alert.ticker,
+                "error": str(error),
+            })
 
-            print(
-                f"Error checking alert "
-                f"{alert.id}: {error}"
-            )
-
-    return Response(
-        {
-            "checked": active_alerts.count(),
-            "triggered": len(triggered),
-            "alerts": triggered,
-        }
-    )
+    return Response({
+        "checked": len(active_alerts),
+        "triggered": len(triggered_alerts),
+        "alerts": triggered_alerts,
+        "failed": len(failures),
+        "failures": failures,
+    })
