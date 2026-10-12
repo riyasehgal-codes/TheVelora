@@ -1,237 +1,215 @@
-# market_data.py
 
+import logging
+
+import pandas as pd
 import yfinance as yf
+
+
+logger = logging.getLogger(__name__)
+
+
+# Common Indian stocks listed on the NSE.
+# These symbols are converted to Yahoo Finance's .NS format.
+INDIAN_STOCKS = {
+    "TCS",
+    "RELIANCE",
+    "INFY",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
+    "ITC",
+    "HINDUNILVR",
+    "WIPRO",
+    "BHARTIARTL",
+    "KOTAKBANK",
+    "LT",
+    "AXISBANK",
+    "MARUTI",
+    "SUNPHARMA",
+    "TATAMOTORS",
+    "TATASTEEL",
+    "ADANIENT",
+    "ADANIPORTS",
+}
+
+
+def normalize_ticker(ticker):
+    """
+    Convert known Indian stock symbols to Yahoo Finance symbols.
+
+    Examples:
+        TCS -> TCS.NS
+        RELIANCE -> RELIANCE.NS
+        AAPL -> AAPL
+        AMZN -> AMZN
+        AAPL.NS -> AAPL.NS
+    """
+    ticker = ticker.upper().strip()
+
+    if not ticker:
+        raise ValueError("Stock ticker cannot be empty.")
+
+    # Keep explicitly supplied exchange suffixes unchanged.
+    if "." in ticker:
+        return ticker
+
+    if ticker in INDIAN_STOCKS:
+        return f"{ticker}.NS"
+
+    # Unknown symbols are tried as supplied rather than
+    # incorrectly assuming that they are Indian stocks.
+    return ticker
 
 
 def get_exchange_rate(from_currency, to_currency="INR"):
     """
-    Get the latest exchange rate between two currencies.
+    Fetch the latest available currency exchange rate.
 
-    Example:
-        USD -> INR
-
-    Returns:
-        Exchange rate as a float
-        None if the rate cannot be fetched.
+    Returns a float, or None if the rate is unavailable.
     """
+    from_currency = from_currency.upper().strip()
+    to_currency = to_currency.upper().strip()
 
-    from_currency = from_currency.upper()
-    to_currency = to_currency.upper()
-
-    # If both currencies are the same,
-    # no conversion is needed.
     if from_currency == to_currency:
         return 1.0
 
-    # Yahoo Finance currency pair format.
-    currency_pair = (
-        f"{from_currency}{to_currency}=X"
-    )
+    currency_pair = f"{from_currency}{to_currency}=X"
 
     try:
+        data = yf.Ticker(currency_pair).history(period="5d")
 
-        # Create Yahoo Finance ticker.
-        currency = yf.Ticker(
-            currency_pair
-        )
-
-        # Get recent market data.
-        data = currency.history(
-            period="5d"
-        )
-
-        # If Yahoo returned no data,
-        # the exchange rate could not be found.
-        if data.empty:
+        if data.empty or "Close" not in data.columns:
             return None
 
-        # Get the latest closing rate.
-        latest_rate = data["Close"].dropna().iloc[-1]
+        prices = pd.to_numeric(
+            data["Close"], errors="coerce"
+        ).dropna()
 
-        return float(latest_rate)
+        if prices.empty:
+            return None
 
-    except Exception as error:
+        return float(prices.iloc[-1])
 
-        print(
-            "Exchange rate error:",
-            error
+    except Exception:
+        logger.exception(
+            "Exchange rate lookup failed for %s",
+            currency_pair,
+        )
+        return None
+
+
+def _get_history(yahoo_ticker, period="1mo"):
+    """Fetch market history and return None if unavailable."""
+    try:
+        data = yf.Ticker(yahoo_ticker).history(
+            period=period,
+            auto_adjust=True,
         )
 
+        if data.empty or "Close" not in data.columns:
+            return None
+
+        data = data.copy()
+        data["Close"] = pd.to_numeric(
+            data["Close"], errors="coerce"
+        )
+        data = data.dropna(subset=["Close"])
+
+        return data if not data.empty else None
+
+    except Exception:
+        logger.exception(
+            "Market data lookup failed for %s",
+            yahoo_ticker,
+        )
         return None
+
+
+def _get_ticker_candidates(ticker):
+    """
+    Return the appropriate Yahoo Finance symbol candidates.
+
+    Known Indian stocks use NSE symbols. Other stocks are
+    tried using the original symbol.
+    """
+    original = ticker.upper().strip()
+    normalized = normalize_ticker(original)
+
+    candidates = [normalized]
+
+    # Allow fallback to the original symbol if an NSE lookup
+    # fails for a known Indian stock.
+    if normalized != original:
+        candidates.append(original)
+
+    return list(dict.fromkeys(candidates))
 
 
 def get_stock_price(ticker):
     """
-    Fetch the latest available market price
-    and currency for a stock.
+    Fetch the latest available stock price and currency.
 
-    Indian stocks:
-        TCS -> TCS.NS -> INR
-
-    US stocks:
-        AAPL -> AAPL -> USD
+    Examples:
+        TCS -> TCS.NS, INR
+        AAPL -> AAPL, USD
+        AAPL.NS -> AAPL.NS, INR
     """
+    candidates = _get_ticker_candidates(ticker)
 
-    ticker = ticker.upper().strip()
+    for yahoo_ticker in candidates:
+        data = _get_history(yahoo_ticker, period="5d")
 
-    # ==========================================
-    # TRY NSE
-    # ==========================================
+        if data is None:
+            continue
 
-    if "." not in ticker:
-
-        nse_ticker = f"{ticker}.NS"
-
-        stock = yf.Ticker(
-            nse_ticker
+        currency = (
+            "INR"
+            if yahoo_ticker.endswith((".NS", ".BO"))
+            else "USD"
         )
 
-        try:
+        return {
+            "ticker": ticker.upper().strip(),
+            "yahoo_ticker": yahoo_ticker,
+            "price": float(data["Close"].iloc[-1]),
+            "currency": currency,
+        }
 
-            data = stock.history(
-                period="1d"
-            )
-
-        except Exception:
-
-            data = None
-
-        if (
-            data is not None
-            and not data.empty
-        ):
-
-            latest_price = (
-                data["Close"].iloc[-1]
-            )
-
-            return {
-                "ticker": ticker,
-                "price": float(
-                    latest_price
-                ),
-                "currency": "INR",
-            }
-
-    # ==========================================
-    # TRY ORIGINAL TICKER
-    # ==========================================
-
-    stock = yf.Ticker(ticker)
-
-    try:
-
-        data = stock.history(
-            period="1d"
-        )
-
-    except Exception:
-
-        data = None
-
-    if (
-        data is None
-        or data.empty
-    ):
-
-        return None
-
-    latest_price = (
-        data["Close"].iloc[-1]
+    raise ValueError(
+        f"No recent market price was found for {ticker.upper().strip()}. "
+        "Check the ticker symbol and try again."
     )
 
-    return {
-        "ticker": ticker,
-        "price": float(
-            latest_price
-        ),
-        "currency": "USD",
-    }
-    
+
 def get_historical_prices(ticker, period="1mo"):
     """
-    Get historical closing prices for a stock.
+    Return historical closing prices as a list of dictionaries.
 
-    Example periods:
-        1mo
-        3mo
-        6mo
-        1y
-
-    Returns:
-        A list containing date and closing price.
+    Supported periods include 1mo, 3mo, 6mo, and 1y.
     """
+    allowed_periods = {"1mo", "3mo", "6mo", "1y"}
 
-    ticker = ticker.upper().strip()
-
-    # Try NSE first for Indian stocks.
-    if "." not in ticker:
-
-        nse_ticker = f"{ticker}.NS"
-
-        stock = yf.Ticker(
-            nse_ticker
+    if period not in allowed_periods:
+        raise ValueError(
+            f"Unsupported period '{period}'. "
+            f"Choose one of: {', '.join(sorted(allowed_periods))}."
         )
 
-        try:
+    for yahoo_ticker in _get_ticker_candidates(ticker):
+        data = _get_history(yahoo_ticker, period=period)
 
-            data = stock.history(
-                period=period
-            )
+        if data is None:
+            continue
 
-        except Exception:
+        return [
+            {
+                "date": index.strftime("%Y-%m-%d"),
+                "price": round(float(row["Close"]), 4),
+            }
+            for index, row in data.iterrows()
+        ]
 
-            data = None
-
-        if (
-            data is not None
-            and not data.empty
-        ):
-
-            return [
-                {
-                    "date": index.strftime(
-                        "%Y-%m-%d"
-                    ),
-                    "price": float(
-                        row["Close"]
-                    ),
-                }
-                for index, row
-                in data.iterrows()
-            ]
-
-
-    # If NSE didn't work,
-    # try the original ticker.
-    stock = yf.Ticker(ticker)
-
-    try:
-
-        data = stock.history(
-            period=period
-        )
-
-    except Exception:
-
-        data = None
-
-    if (
-        data is None
-        or data.empty
-    ):
-
-        return []
-
-    return [
-        {
-            "date": index.strftime(
-                "%Y-%m-%d"
-            ),
-            "price": float(
-                row["Close"]
-            ),
-        }
-        for index, row
-        in data.iterrows()
-    ]
+    raise ValueError(
+        f"No historical market data was found for "
+        f"{ticker.upper().strip()}."
+    )
