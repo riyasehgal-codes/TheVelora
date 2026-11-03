@@ -1,3 +1,4 @@
+
 import { Routes, Route } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
@@ -7,19 +8,15 @@ import Portfolio from "./pages/Portfolio";
 import Forecast from "./pages/Forecast";
 import News from "./pages/News";
 import Alerts from "./pages/Alerts";
+import AIChat from "./pages/AIChat";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
-
 function App() {
-
   return (
-
     <Routes>
 
-      {/* ================================================ */}
       {/* PUBLIC ROUTES */}
-      {/* ================================================ */}
 
       <Route
         path="/register"
@@ -31,10 +28,7 @@ function App() {
         element={<Login />}
       />
 
-
-      {/* ================================================ */}
       {/* PROTECTED ROUTES */}
-      {/* ================================================ */}
 
       <Route
         path="/"
@@ -45,7 +39,6 @@ function App() {
         }
       />
 
-
       <Route
         path="/portfolio"
         element={
@@ -54,7 +47,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
 
       <Route
         path="/forecast"
@@ -65,7 +57,6 @@ function App() {
         }
       />
 
-
       <Route
         path="/news"
         element={
@@ -74,7 +65,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
 
       <Route
         path="/alerts"
@@ -85,11 +75,19 @@ function App() {
         }
       />
 
+      {/* PHASE 7: AI CHATBOT */}
+
+      <Route
+        path="/ai-chat"
+        element={
+          <ProtectedRoute>
+            <AIChat />
+          </ProtectedRoute>
+        }
+      />
+
     </Routes>
-
   );
-
 }
-
 
 export default App;
