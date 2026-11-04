@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 const api = axios.create({
@@ -7,10 +6,6 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
-
-// ============================================================
-// JWT AUTHENTICATION
-// ============================================================
 
 api.interceptors.request.use(
   (config) => {
@@ -60,9 +55,7 @@ export const getHistoricalPrices = async (
   const response = await api.get(
     `/historical-prices/${ticker}/`,
     {
-      params: {
-        period: period,
-      },
+      params: { period },
     }
   );
 
@@ -112,13 +105,43 @@ export const checkAlerts = async () => {
 };
 
 // ============================================================
-// PHASE 7: AI CHATBOT
+// AI-3: PERSISTENT CHAT HISTORY
 // ============================================================
 
-export const sendChatMessage = async (messages) => {
-  const response = await api.post("/chat/", {
-    messages: messages,
+export const getChatConversations = async () => {
+  const response = await api.get("/chat/conversations/");
+  return response.data;
+};
+
+export const createChatConversation = async (title = "New conversation") => {
+  const response = await api.post("/chat/conversations/", {
+    title,
   });
+
+  return response.data;
+};
+
+export const getChatMessages = async (conversationId) => {
+  const response = await api.get(
+    `/chat/conversations/${conversationId}/messages/`
+  );
+
+  return response.data;
+};
+
+export const sendChatMessage = async (conversationId, content) => {
+  const response = await api.post(
+    `/chat/conversations/${conversationId}/messages/`,
+    { content }
+  );
+
+  return response.data;
+};
+
+export const deleteChatConversation = async (conversationId) => {
+  const response = await api.delete(
+    `/chat/conversations/${conversationId}/`
+  );
 
   return response.data;
 };

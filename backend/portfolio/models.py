@@ -1,5 +1,3 @@
-# models.py
-
 from django.conf import settings
 from django.db import models
 
@@ -9,48 +7,31 @@ class Holding(models.Model):
     Stores a stock/asset owned by a Velora user.
     """
 
-    # Connect each holding to the user who owns it.
-    #
-    # If the user is deleted, their holdings are also deleted.
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="holdings",
     )
 
-    # Stock ticker symbol.
-    # Example: RELIANCE, TCS, INFY
     ticker = models.CharField(max_length=20)
 
-    # Number of shares owned.
-    #
-    # DecimalField is used instead of FloatField because
-    # financial quantities should avoid floating-point errors.
     quantity = models.DecimalField(
         max_digits=20,
         decimal_places=6,
     )
 
-    # Average purchase price per share.
     average_price = models.DecimalField(
         max_digits=20,
         decimal_places=2,
     )
 
-    # Automatically stores when the holding was created.
     created_at = models.DateTimeField(auto_now_add=True)
-
-    # Automatically updates whenever the holding is modified.
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        """
-        Controls how a holding appears in Django admin.
-        """
-
         return f"{self.ticker} - {self.quantity} shares"
-    
-    
+
+
 class Alert(models.Model):
     """
     Stores a price alert created by a Velora user.
@@ -67,9 +48,7 @@ class Alert(models.Model):
         related_name="alerts",
     )
 
-    ticker = models.CharField(
-        max_length=20
-    )
+    ticker = models.CharField(max_length=20)
 
     target_price = models.DecimalField(
         max_digits=20,
@@ -81,17 +60,12 @@ class Alert(models.Model):
         choices=CONDITION_CHOICES,
     )
 
-    triggered = models.BooleanField(
-        default=False
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    triggered = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     triggered_at = models.DateTimeField(
         null=True,
-        blank=True
+        blank=True,
     )
 
     def __str__(self):
@@ -100,3 +74,61 @@ class Alert(models.Model):
             f"{self.condition} "
             f"{self.target_price}"
         )
+
+
+class ChatConversation(models.Model):
+    """
+    Stores a conversation created by a Velora user.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="chat_conversations",
+    )
+
+    title = models.CharField(
+        max_length=100,
+        default="New conversation",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"{self.title} - {self.user}"
+
+
+class ChatMessage(models.Model):
+    """
+    Stores individual messages inside a conversation.
+    """
+
+    ROLE_CHOICES = [
+        ("user", "User"),
+        ("assistant", "Velora AI"),
+    ]
+
+    conversation = models.ForeignKey(
+        ChatConversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+    )
+
+    content = models.TextField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.role}: {self.content[:40]}"

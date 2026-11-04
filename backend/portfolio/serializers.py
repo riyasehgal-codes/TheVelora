@@ -1,7 +1,12 @@
-# serializers.py
-from .models import Holding, Alert
 from django.contrib.auth.models import User
 from rest_framework import serializers
+
+from .models import (
+    Holding,
+    Alert,
+    ChatConversation,
+    ChatMessage,
+)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -9,40 +14,27 @@ class RegisterSerializer(serializers.ModelSerializer):
     Converts registration data from React into a Django User.
     """
 
-    # Password should be write-only.
-    # This means we can receive it, but never return it in an API response.
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-
-        # These are the fields React will send during registration.
         fields = ["username", "email", "password"]
 
     def create(self, validated_data):
-        """
-        Creates a new user using Django's built-in User model.
-        """
-
-        # create_user() automatically handles password hashing.
-        user = User.objects.create_user(
+        return User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
         )
 
-        return user
-    
+
 class HoldingSerializer(serializers.ModelSerializer):
     """
-    Converts Holding model data into JSON
-    and validates data coming from React.
+    Converts Holding model data into JSON.
     """
 
     class Meta:
         model = Holding
-
-        # These are the fields React can work with.
         fields = [
             "id",
             "ticker",
@@ -52,22 +44,20 @@ class HoldingSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-        # These fields are created automatically by Django.
         read_only_fields = [
             "id",
             "created_at",
             "updated_at",
         ]
 
+
 class AlertSerializer(serializers.ModelSerializer):
     """
-    Converts Alert model data into JSON
-    and validates alert data from React.
+    Converts Alert model data into JSON.
     """
 
     class Meta:
         model = Alert
-
         fields = [
             "id",
             "ticker",
@@ -83,4 +73,46 @@ class AlertSerializer(serializers.ModelSerializer):
             "triggered",
             "created_at",
             "triggered_at",
-        ]   
+        ]
+
+
+class ChatConversationSerializer(serializers.ModelSerializer):
+    """
+    Serializes conversation information.
+    """
+
+    class Meta:
+        model = ChatConversation
+        fields = [
+            "id",
+            "title",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    """
+    Serializes individual chat messages.
+    """
+
+    class Meta:
+        model = ChatMessage
+        fields = [
+            "id",
+            "role",
+            "content",
+            "created_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "role",
+            "created_at",
+        ]

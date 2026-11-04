@@ -1,6 +1,6 @@
-
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -17,29 +17,63 @@ from .views import (
     forecast_stock,
     stock_news,
     check_alerts,
-    chat,
+    ChatConversationListView,
+    ChatConversationDetailView,
+    ChatConversationMessagesView,
 )
 
 
 router = DefaultRouter()
-router.register(r"holdings", HoldingViewSet, basename="holding")
-router.register(r"alerts", AlertViewSet, basename="alert")
+
+router.register(
+    r"holdings",
+    HoldingViewSet,
+    basename="holding",
+)
+
+router.register(
+    r"alerts",
+    AlertViewSet,
+    basename="alert",
+)
 
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
+
     path("login/", TokenObtainPairView.as_view(), name="login"),
+
     path(
         "token/refresh/",
         TokenRefreshView.as_view(),
         name="token_refresh",
     ),
 
-    # Chatbot API
-    path("chat/", chat, name="chat"),
+    # AI-3: Persistent chatbot conversations
+    path(
+        "chat/conversations/",
+        ChatConversationListView.as_view(),
+        name="chat_conversations",
+    ),
+
+    path(
+        "chat/conversations/<int:conversation_id>/",
+        ChatConversationDetailView.as_view(),
+        name="chat_conversation_detail",
+    ),
+
+    path(
+        "chat/conversations/<int:conversation_id>/messages/",
+        ChatConversationMessagesView.as_view(),
+        name="chat_conversation_messages",
+    ),
 
     # Price alert checking
-    path("alerts/check/", check_alerts, name="check_alerts"),
+    path(
+        "alerts/check/",
+        check_alerts,
+        name="check_alerts",
+    ),
 
     path("", include(router.urls)),
 
@@ -64,5 +98,6 @@ urlpatterns = [
     ),
 
     path("forecast/<str:ticker>/", forecast_stock, name="forecast"),
+
     path("news/<str:ticker>/", stock_news, name="stock_news"),
 ]
