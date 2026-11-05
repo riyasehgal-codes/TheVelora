@@ -2,17 +2,18 @@
 """
 Velora AI Chatbot Service
 
-Connects Django to the locally running Ollama model.
+Connects Django to the Groq cloud AI API.
 Provides conversational responses with lightweight context handling.
 """
 
 import json
-import urllib.error
-import urllib.request
+import os
+import requests
 
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "llama3.2:3b"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "openai/gpt-oss-20b"
+
 
 SYSTEM_PROMPT = """
 You are Velora AI, a friendly, intelligent and helpful personal assistant.
@@ -68,55 +69,86 @@ Always focus on answering the user's actual question.
 """
 
 
-def generate_chat_response(messages):
-    """
-    Sends recent conversation history to Ollama
-    and returns the generated response.
-    """
+class GroqRateLimitError(Exception):
+    """Raised when Groq reports that an API rate limit was reached."""
 
-    # Keep the most recent 8 messages for faster responses.
+    def __init__(self, message, retry_after=None, reset_after=None):
+        super().__init__(message)
+        self.retry_after = retry_after
+        self.reset_after = reset_after
+
+
+def generate_chat_response(messages):
+    """Sends recent conversation history to Groq."""
+
+    api_key = os.environ.get("GROQ_API_KEY")
+
+    if not api_key:
+        raise ValueError(
+            "Groq API key is missing. Configure GROQ_API_KEY."
+        )
+
     conversation = messages[-8:]
 
     payload = {
-        "model": OLLAMA_MODEL,
+        "model": GROQ_MODEL,
         "messages": [
             {
                 "role": "system",
                 "content": SYSTEM_PROMPT,
             }
         ] + conversation,
+        "temperature": 0.65,
+        "max_completion_tokens": 500,
         "stream": False,
-        "keep_alive": "10m",
-        "options": {
-            "temperature": 0.65,
-            "top_p": 0.9,
-            "repeat_penalty": 1.1,
-            "num_predict": 400,
-            "num_ctx": 2048,
-        },
     }
 
-    request = urllib.request.Request(
-        OLLAMA_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
 
     try:
-        with urllib.request.urlopen(
-            request,
-            timeout=120,
-        ) as response:
-            result = json.loads(
-                response.read().decode("utf-8")
+        response = requests.post(
+            GROQ_URL,
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+
+        if response.status_code == 429:
+            raise GroqRateLimitError(
+                "Velora AI has reached its usage limit. Please try again later.",
+                retry_after=response.headers.get("Retry-After"),
+                reset_after=response.headers.get(
+                    "x-ratelimit-reset-requests"
+                ),
             )
 
-        answer = result.get("message", {}).get(
-            "content", ""
-        ).strip()
+        if response.status_code == 401:
+            raise ValueError(
+                "Groq authentication failed. Check your API key."
+            )
+
+        if response.status_code == 403:
+            raise ValueError(
+                f"Groq access was denied: {response.text[:500]}"
+            )
+
+        if not response.ok:
+            raise ValueError(
+                f"Groq returned HTTP error {response.status_code}: "
+                f"{response.text[:500]}"
+            )
+
+        result = response.json()
+
+        answer = (
+            result.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
 
         if not answer:
             raise ValueError(
@@ -125,23 +157,25 @@ def generate_chat_response(messages):
 
         return answer
 
-    except urllib.error.HTTPError as error:
-        raise ValueError(
-            f"Ollama returned HTTP error {error.code}."
-        ) from error
+    except GroqRateLimitError:
+        raise
 
-    except urllib.error.URLError as error:
-        raise ConnectionError(
-            "Could not connect to Ollama. "
-            "Make sure Ollama is running."
-        ) from error
-
-    except TimeoutError as error:
+    except requests.exceptions.Timeout as error:
         raise TimeoutError(
             "The AI response took too long. Please try again."
         ) from error
 
+    except requests.exceptions.ConnectionError as error:
+        raise ConnectionError(
+            "Could not connect to Groq. Check your internet connection."
+        ) from error
+
+    except requests.exceptions.RequestException as error:
+        raise ConnectionError(
+            f"Groq request failed: {str(error)[:300]}"
+        ) from error
+
     except json.JSONDecodeError as error:
         raise ValueError(
-            "Ollama returned an invalid response. Please try again."
+            "Groq returned an invalid response. Please try again."
         ) from error

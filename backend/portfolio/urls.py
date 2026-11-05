@@ -1,9 +1,11 @@
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
+    TokenBlacklistView,
 )
 
 from .views import (
@@ -39,9 +41,18 @@ router.register(
 
 
 urlpatterns = [
-    path("register/", RegisterView.as_view(), name="register"),
+    # Authentication
+    path(
+        "register/",
+        RegisterView.as_view(),
+        name="register",
+    ),
 
-    path("login/", TokenObtainPairView.as_view(), name="login"),
+    path(
+        "login/",
+        TokenObtainPairView.as_view(),
+        name="login",
+    ),
 
     path(
         "token/refresh/",
@@ -49,7 +60,13 @@ urlpatterns = [
         name="token_refresh",
     ),
 
-    # AI-3: Persistent chatbot conversations
+    path(
+        "token/blacklist/",
+        TokenBlacklistView.as_view(),
+        name="token_blacklist",
+    ),
+
+    # Persistent chatbot conversations
     path(
         "chat/conversations/",
         ChatConversationListView.as_view(),
@@ -75,29 +92,48 @@ urlpatterns = [
         name="check_alerts",
     ),
 
+    # Router endpoints
     path("", include(router.urls)),
 
-    path("status/", stock_status, name="status"),
+    # Stock status
+    path(
+        "status/",
+        stock_status,
+        name="status",
+    ),
 
+    # Market price
     path(
         "market-price/<str:ticker>/",
         market_price,
         name="market_price",
     ),
 
+    # Exchange rate
     path(
         "exchange-rate/<str:from_currency>/<str:to_currency>/",
         exchange_rate,
         name="exchange_rate",
     ),
 
+    # Historical prices
     path(
         "historical-prices/<str:ticker>/",
         historical_prices,
         name="historical_prices",
     ),
 
-    path("forecast/<str:ticker>/", forecast_stock, name="forecast"),
+    # Forecast
+    path(
+        "forecast/<str:ticker>/",
+        forecast_stock,
+        name="forecast",
+    ),
 
-    path("news/<str:ticker>/", stock_news, name="stock_news"),
+    # Stock news
+    path(
+        "news/<str:ticker>/",
+        stock_news,
+        name="stock_news",
+    ),
 ]

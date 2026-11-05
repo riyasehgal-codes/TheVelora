@@ -1,3 +1,4 @@
+
 from django.utils import timezone
 
 from rest_framework import status, viewsets
@@ -30,7 +31,11 @@ from .market_data import (
 from .forecast import get_forecast
 from .alerts import check_alert
 from .news import get_stock_news
-from .ai_service import generate_chat_response
+
+from .ai_service import (
+    generate_chat_response,
+    GroqRateLimitError,
+)
 
 
 class RegisterView(APIView):
@@ -417,6 +422,17 @@ class ChatConversationMessagesView(APIView):
                     assistant_message
                 ).data,
             })
+
+        except GroqRateLimitError as error:
+            return Response(
+                {
+                    "error": str(error),
+                    "code": "AI_LIMIT_REACHED",
+                    "retry_after": error.retry_after,
+                    "reset_after": error.reset_after,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
         except ConnectionError as error:
             return Response(

@@ -1,6 +1,6 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import {
   LineChart,
   Line,
@@ -13,9 +13,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
 import Navbar from "../components/Navbar";
-
 import api, {
   getMarketPrice,
   getExchangeRate,
@@ -25,18 +23,65 @@ import api, {
 } from "../api/client";
 
 const CHART_COLORS = [
-  "#3b82f6",
-  "#06b6d4",
-  "#10b981",
-  "#f59e0b",
-  "#ec4899",
-  "#8b5cf6",
-  "#f97316",
+  "#5279df",
+  "#648eea",
+  "#829fe8",
+  "#9a83df",
+  "#4c9bbd",
+  "#58a995",
+  "#b18bd6",
 ];
 
-const cardClass =
-  "rounded-2xl border border-slate-800/90 bg-[#08152d] shadow-[0_12px_35px_rgba(0,0,0,0.18)]";
-const mutedText = "text-sm text-slate-400";
+const CARD =
+  "rounded-2xl border border-[#142039] bg-[#050b18] shadow-[0_8px_24px_rgba(0,0,0,0.22)]";
+
+const INNER_CARD =
+  "rounded-xl border border-[#142039] bg-[#070f1e]";
+
+const MUTED = "text-sm text-slate-500";
+
+function SectionHeading({ eyebrow, title, description, action }) {
+  return (
+    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+      <div>
+        {eyebrow && (
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
+            {eyebrow}
+          </p>
+        )}
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
+        )}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function EmptyState({ title, description, action, onClick }) {
+  return (
+    <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-[#1b2b46] bg-[#070f1e] px-5 py-8 text-center">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-xl text-blue-300">
+        ◈
+      </div>
+      <p className="mt-3 text-sm font-semibold text-white">{title}</p>
+      <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+        {description}
+      </p>
+      {action && (
+        <button
+          onClick={onClick}
+          className="mt-4 rounded-lg bg-[#24458f] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#315fc4]"
+        >
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -125,6 +170,8 @@ function Dashboard() {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchMarketData = async () => {
       if (holdings.length === 0) {
         setMarketPrices({});
@@ -149,11 +196,17 @@ function Dashboard() {
         })
       );
 
-      setMarketPrices(prices);
-      setMarketCurrencies(currencies);
+      if (!cancelled) {
+        setMarketPrices(prices);
+        setMarketCurrencies(currencies);
+      }
     };
 
     fetchMarketData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [holdings]);
 
   useEffect(() => {
@@ -170,6 +223,8 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchHistoricalData = async () => {
       if (
         holdings.length === 0 ||
@@ -203,6 +258,7 @@ function Dashboard() {
         );
 
         const allDates = new Set();
+
         Object.values(historicalPrices).forEach((stockData) => {
           stockData.forEach((item) => {
             if (item.date) allDates.add(item.date);
@@ -231,19 +287,26 @@ function Dashboard() {
             totalValue += value;
           });
 
-          return { date, value: Number(totalValue.toFixed(2)) };
+          return {
+            date,
+            value: Number(totalValue.toFixed(2)),
+          };
         });
 
-        setHistoricalData(portfolioHistory);
+        if (!cancelled) setHistoricalData(portfolioHistory);
       } catch (error) {
         console.error("Historical portfolio error:", error);
-        setHistoricalData([]);
+        if (!cancelled) setHistoricalData([]);
       } finally {
-        setChartLoading(false);
+        if (!cancelled) setChartLoading(false);
       }
     };
 
     fetchHistoricalData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [holdings, selectedPeriod, marketCurrencies, exchangeRate]);
 
   const firstTicker = holdings[0]?.ticker;
@@ -259,12 +322,14 @@ function Dashboard() {
 
     const loadNews = async () => {
       setNewsLoading(true);
+
       try {
         const response = await getStockNews(firstTicker);
         const data = response?.data ?? response;
         const items = Array.isArray(data)
           ? data
           : data?.news ?? data?.articles ?? data?.results ?? [];
+
         if (!cancelled) setNews(items.slice(0, 4));
       } catch (error) {
         console.error("Dashboard news preview error:", error);
@@ -276,6 +341,7 @@ function Dashboard() {
 
     const loadForecast = async () => {
       setForecastLoading(true);
+
       try {
         const response = await getForecast(firstTicker);
         const data = response?.data ?? response;
@@ -319,7 +385,9 @@ function Dashboard() {
 
   const totalProfitLoss = totalCurrentValue - totalInvested;
   const totalReturn =
-    totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
+    totalInvested > 0
+      ? (totalProfitLoss / totalInvested) * 100
+      : 0;
 
   const allocationData = holdings
     .map((holding) => {
@@ -330,7 +398,10 @@ function Dashboard() {
       let value = quantity * currentPrice;
       if (currency === "USD") value *= exchangeRate;
 
-      return { ticker: holding.ticker, value };
+      return {
+        ticker: holding.ticker,
+        value,
+      };
     })
     .filter((item) => item.value > 0);
 
@@ -342,7 +413,9 @@ function Dashboard() {
   const finalAllocationData = allocationData.map((item) => ({
     ...item,
     percentage:
-      allocationTotal > 0 ? (item.value / allocationTotal) * 100 : 0,
+      allocationTotal > 0
+        ? (item.value / allocationTotal) * 100
+        : 0,
   }));
 
   const holdingPerformance = holdings
@@ -352,10 +425,13 @@ function Dashboard() {
       const currentPrice = Number(marketPrices[holding.ticker] || 0);
       const currency = marketCurrencies[holding.ticker];
       const conversionRate = currency === "USD" ? exchangeRate : 1;
+
       const invested = quantity * averagePrice * conversionRate;
       const currentValue = quantity * currentPrice * conversionRate;
       const profitLoss = currentValue - invested;
-      const returnPercentage = invested > 0 ? (profitLoss / invested) * 100 : 0;
+
+      const returnPercentage =
+        invested > 0 ? (profitLoss / invested) * 100 : 0;
 
       return {
         ticker: holding.ticker,
@@ -366,12 +442,18 @@ function Dashboard() {
         hasPrice: currentPrice > 0,
       };
     })
-    .sort((a, b) => Math.abs(b.returnPercentage) - Math.abs(a.returnPercentage));
+    .sort(
+      (a, b) =>
+        Math.abs(b.returnPercentage) - Math.abs(a.returnPercentage)
+    );
 
-  const concentrationIndex = finalAllocationData.reduce((total, item) => {
-    const weight = item.percentage / 100;
-    return total + weight * weight;
-  }, 0);
+  const concentrationIndex = finalAllocationData.reduce(
+    (total, item) => {
+      const weight = item.percentage / 100;
+      return total + weight * weight;
+    },
+    0
+  );
 
   const diversificationScore =
     finalAllocationData.length > 1
@@ -379,8 +461,16 @@ function Dashboard() {
       : 0;
 
   let riskLevel = "High";
-  if (diversificationScore >= 70) riskLevel = "Low";
-  else if (diversificationScore >= 40) riskLevel = "Moderate";
+
+  if (finalAllocationData.length === 0) {
+    riskLevel = "Unavailable";
+  } else if (finalAllocationData.length === 1) {
+    riskLevel = "High";
+  } else if (diversificationScore >= 70) {
+    riskLevel = "Low";
+  } else if (diversificationScore >= 40) {
+    riskLevel = "Moderate";
+  }
 
   const largestHolding =
     finalAllocationData.length > 0
@@ -399,6 +489,7 @@ function Dashboard() {
           Number(marketPrices[a.ticker] || 0) * Number(a.quantity);
         const bValue =
           Number(marketPrices[b.ticker] || 0) * Number(b.quantity);
+
         return bValue - aValue;
       }),
     [holdings, marketPrices]
@@ -472,7 +563,10 @@ function Dashboard() {
         .map((item, index) => ({
           day: item.date || item.day || `Day ${index + 1}`,
           price: Number(
-            item.predicted_price ?? item.price ?? item.value ?? item.prediction
+            item.predicted_price ??
+              item.price ??
+              item.value ??
+              item.prediction
           ),
         }))
         .filter((item) => Number.isFinite(item.price))
@@ -482,34 +576,34 @@ function Dashboard() {
     {
       title: "Manage portfolio",
       description: "Add, edit and review your holdings.",
-      action: "Open Portfolio",
+      action: "Open portfolio",
       path: "/portfolio",
       symbol: "↗",
     },
     {
       title: "Stock forecasts",
       description: "Explore your seven-day price forecasts.",
-      action: "View Forecasts",
+      action: "View forecasts",
       path: "/forecast",
       symbol: "⌁",
     },
     {
       title: "Market news",
       description: "Read the latest updates for your stocks.",
-      action: "Explore News",
+      action: "Explore news",
       path: "/news",
       symbol: "▤",
     },
     {
       title: "Price alerts",
       description: "Create and manage your price notifications.",
-      action: "Manage Alerts",
+      action: "Manage alerts",
       path: "/alerts",
       symbol: "◉",
     },
     {
       title: "Velora AI",
-      description: "Ask general questions and have a conversation.",
+      description: "Ask questions and start a conversation.",
       action: "Ask Velora AI",
       path: "/ai-chat",
       symbol: "✳",
@@ -518,16 +612,24 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050d1d] text-white">
+      <div className="min-h-screen bg-[#020510] text-white">
         <Navbar />
-        <main className="mx-auto max-w-[1440px] px-5 py-12 sm:px-8">
+        <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-10 sm:px-6 lg:px-8">
           <div className="animate-pulse space-y-5">
-            <div className="h-8 w-64 rounded bg-slate-800" />
-            <div className="h-28 rounded-2xl bg-slate-900" />
-            <div className="grid gap-4 md:grid-cols-3">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="h-28 rounded-2xl bg-slate-900" />
+            <div className="h-4 w-36 rounded bg-[#142039]" />
+            <div className="h-9 w-72 rounded-lg bg-[#142039]" />
+            <div className="h-5 w-96 max-w-full rounded bg-[#0b1425]" />
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {[1, 2, 3, 4].map((item) => (
+                <div
+                  key={item}
+                  className="h-36 rounded-2xl border border-[#142039] bg-[#050b18]"
+                />
               ))}
+            </div>
+            <div className="grid gap-5 xl:grid-cols-2">
+              <div className="h-80 rounded-2xl bg-[#050b18]" />
+              <div className="h-80 rounded-2xl bg-[#050b18]" />
             </div>
           </div>
         </main>
@@ -536,88 +638,173 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050d1d] text-slate-100">
+    <div className="min-h-screen overflow-x-hidden bg-[#020510] text-slate-100">
+      <style>{`
+        main [class*="bg-[#081832]"],
+        main [class*="bg-[#07142b]"],
+        main [class*="bg-[#091831]"] {
+          background-color: #050b18 !important;
+        }
+
+        main [class*="bg-[#0a1a35]"],
+        main [class*="bg-[#0b1c37]"],
+        main [class*="bg-[#0b1d3a]"] {
+          background-color: #070f1e !important;
+        }
+
+        main [class*="bg-[#10264b]"] {
+          background-color: #0b1930 !important;
+        }
+
+        main [class*="bg-[#040d1d]"] {
+          background-color: #030814 !important;
+        }
+
+        main [class*="bg-[#17366d]"] {
+          background-color: #14264a !important;
+        }
+
+        main [class*="bg-[#20478c]"] {
+          background-color: #1b315c !important;
+        }
+
+        main [class*="border-[#1b3155]"],
+        main [class*="border-[#17294a]"],
+        main [class*="border-[#203453]"],
+        main [class*="border-[#1b2b46]"],
+        main [class*="border-[#294574]"],
+        main [class*="border-[#263957]"] {
+          border-color: #142039 !important;
+        }
+
+        main [class*="hover:bg-[#0a1a35]"]:hover,
+        main [class*="hover:bg-[#0b1c37]"]:hover {
+          background-color: #0a1425 !important;
+        }
+
+        main [class*="shadow-"] {
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22) !important;
+        }
+      `}</style>
+
       <Navbar />
 
       <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-        <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-400">
-              Portfolio overview
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Your financial snapshot
-            </h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Your investments, performance and market insights in one place.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate("/portfolio")}
-            className="w-fit rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20"
-          >
-            View portfolio <span aria-hidden="true">↗</span>
-          </button>
-        </section>
-
-        <section className={`${cardClass} overflow-hidden p-5 sm:p-6`}>
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <section className="rounded-2xl border border-[#142039] bg-[#050b18] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.22)] sm:p-8">
+          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
-                Live snapshot
-              </p>
-              <h2 className="mt-1 text-lg font-semibold text-white">
-                Portfolio at a glance
-              </h2>
-              <p className={mutedText}>
-                Based on your saved holdings and the latest available prices.
+              <div className="mb-3 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-blue-400" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-300">
+                  Your investment workspace
+                </p>
+              </div>
+
+              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Your financial snapshot
+              </h1>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+                Track your investments, monitor performance and explore
+                market insights — all from one place.
               </p>
             </div>
-            <span className="w-fit rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
-              {holdings.length} {holdings.length === 1 ? "holding" : "holdings"}
-            </span>
+
+            <button
+              onClick={() => navigate("/portfolio")}
+              className="w-fit rounded-xl border border-blue-500/30 bg-[#14264a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1b315c]"
+            >
+              View portfolio <span className="ml-2">↗</span>
+            </button>
           </div>
+
+          <div className="mt-7 flex flex-wrap gap-3 border-t border-[#142039] pt-5">
+            <div className="rounded-lg border border-[#142039] bg-[#070f1e] px-4 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                Your holdings
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {holdings.length} {holdings.length === 1 ? "stock" : "stocks"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[#142039] bg-[#070f1e] px-4 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                Active alerts
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {alertsLoading ? "—" : activeAlerts.length}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[#142039] bg-[#070f1e] px-4 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                Portfolio currency
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">INR ₹</p>
+            </div>
+          </div>
+        </section>
+
+        <section className={`${CARD} p-5 sm:p-6`}>
+          <SectionHeading
+            eyebrow="Portfolio overview"
+            title="Portfolio at a glance"
+            description="A quick overview of your investment performance."
+            action={
+              <span className="w-fit rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300">
+                Live snapshot
+              </span>
+            }
+          />
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               {
                 label: "Total invested",
                 value: formatCurrency(totalInvested),
-                note: "Your purchase value",
-                icon: "◈",
+                note: "Your total purchase value",
+                symbol: "◈",
               },
               {
                 label: "Current value",
                 value: formatCurrency(totalCurrentValue),
                 note: "Latest available market value",
-                icon: "↗",
+                symbol: "↗",
               },
               {
                 label: "Total profit / loss",
                 value: formatCurrency(totalProfitLoss),
-                note: `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}% overall`,
-                icon: "⌁",
+                note: `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}% overall return`,
+                symbol: "⌁",
                 positive: totalProfitLoss >= 0,
               },
               {
                 label: "Diversification",
-                value: `${diversificationScore}/100`,
-                note: `${riskLevel} concentration risk`,
-                icon: "◉",
+                value:
+                  finalAllocationData.length > 0
+                    ? `${diversificationScore}/100`
+                    : "—",
+                note:
+                  riskLevel === "Unavailable"
+                    ? "Add holdings to calculate"
+                    : `${riskLevel} concentration risk`,
+                symbol: "◉",
               },
             ].map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-xl border border-slate-800 bg-[#0b1b36] p-4"
+                className="rounded-xl border border-[#142039] bg-[#070f1e] p-4 transition hover:border-[#24458f]"
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-slate-400">{metric.label}</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-lg text-blue-300">
-                    {metric.icon}
+                  <p className="text-xs font-medium text-slate-400">
+                    {metric.label}
+                  </p>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1b315c] bg-[#0b1930] text-lg text-blue-300">
+                    {metric.symbol}
                   </span>
                 </div>
+
                 <p
-                  className={`mt-3 break-words text-xl font-bold tracking-tight sm:text-2xl ${
+                  className={`mt-4 break-words text-xl font-bold tracking-tight sm:text-2xl ${
                     metric.positive === undefined
                       ? "text-white"
                       : metric.positive
@@ -627,6 +814,7 @@ function Dashboard() {
                 >
                   {metric.value}
                 </p>
+
                 <p className="mt-1 text-xs text-slate-500">{metric.note}</p>
               </div>
             ))}
@@ -634,142 +822,150 @@ function Dashboard() {
         </section>
 
         <section className="grid gap-5 xl:grid-cols-12">
-          <div className={`${cardClass} p-5 sm:p-6 xl:col-span-7`}>
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-              <div>
-                <h2 className="text-lg font-semibold text-white">
-                  Portfolio performance
-                </h2>
-                <p className={mutedText}>Portfolio value over time</p>
-              </div>
-              <div className="flex gap-1 rounded-xl bg-[#050d1d] p-1">
-                {periods.map((period) => (
-                  <button
-                    key={period.value}
-                    type="button"
-                    onClick={() => setSelectedPeriod(period.value)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      selectedPeriod === period.value
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                    }`}
-                  >
-                    {period.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className={`${CARD} p-5 sm:p-6 xl:col-span-7`}>
+            <SectionHeading
+              eyebrow="Performance"
+              title="Portfolio performance"
+              description="Track how your portfolio value changes over time."
+              action={
+                <div className="flex gap-1 rounded-lg border border-[#142039] bg-[#030814] p-1">
+                  {periods.map((period) => (
+                    <button
+                      key={period.value}
+                      type="button"
+                      onClick={() => setSelectedPeriod(period.value)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                        selectedPeriod === period.value
+                          ? "bg-[#24458f] text-white"
+                          : "text-slate-400 hover:bg-[#142542] hover:text-white"
+                      }`}
+                    >
+                      {period.label}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
 
-            <div className="mt-5 h-64 sm:h-72">
+            <div className="mt-5 h-72">
               {chartLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-500">
                   Loading performance data...
                 </div>
               ) : historicalData.length === 0 ? (
                 <div className="h-full overflow-y-auto pr-1">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-white">
-                        Holdings performance
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Returns calculated from your average purchase price
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-300">
-                      Live snapshot
-                    </span>
-                  </div>
-
                   {holdingPerformance.length === 0 ? (
-                    <div className="flex h-[calc(100%-4rem)] min-h-36 flex-col items-center justify-center rounded-xl border border-dashed border-slate-700 bg-[#0b1b36]/60 px-4 text-center">
-                      <span className="text-3xl text-slate-600">◈</span>
-                      <p className="mt-2 text-sm font-medium text-slate-300">
-                        Your performance overview will appear here
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Add holdings to see stock-wise returns.
-                      </p>
-                      <button
-                        onClick={() => navigate("/portfolio")}
-                        className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
-                      >
-                        Add holdings
-                      </button>
-                    </div>
+                    <EmptyState
+                      title="Your performance overview will appear here"
+                      description="Add your first holding to start tracking your portfolio performance."
+                      action="Add holdings"
+                      onClick={() => navigate("/portfolio")}
+                    />
                   ) : (
-                    <div className="space-y-3">
-                      {holdingPerformance.slice(0, 5).map((item, index) => {
-                        const positive = item.profitLoss >= 0;
-                        const barWidth = Math.max(
-                          4,
-                          Math.min(100, Math.abs(item.returnPercentage))
-                        );
+                    <>
+                      <div className="mb-4 flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            Holdings performance
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Returns based on your average purchase price
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-[#1b315c] bg-[#0b1930] px-3 py-1 text-xs text-blue-300">
+                          Snapshot
+                        </span>
+                      </div>
 
-                        return (
-                          <div
-                            key={item.ticker}
-                            className="rounded-xl border border-slate-800 bg-[#0b1b36] px-3 py-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex min-w-0 items-center gap-3">
-                                <span
-                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                                  style={{
-                                    backgroundColor:
-                                      CHART_COLORS[index % CHART_COLORS.length],
-                                  }}
-                                >
-                                  {item.ticker?.slice(0, 2)}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-white">
-                                    {item.ticker}
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    Current value {formatCurrency(item.currentValue)}
-                                  </p>
+                      <div className="space-y-3">
+                        {holdingPerformance.slice(0, 5).map((item, index) => {
+                          const positive = item.profitLoss >= 0;
+                          const barWidth = Math.max(
+                            4,
+                            Math.min(100, Math.abs(item.returnPercentage))
+                          );
+
+                          return (
+                            <div
+                              key={item.ticker}
+                              className={`${INNER_CARD} px-3 py-3`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <span
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                                    style={{
+                                      backgroundColor:
+                                        CHART_COLORS[index % CHART_COLORS.length],
+                                    }}
+                                  >
+                                    {item.ticker?.slice(0, 2)}
+                                  </span>
+
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-white">
+                                      {item.ticker}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      Current value{" "}
+                                      {formatCurrency(item.currentValue)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 text-right">
+                                  {item.hasPrice ? (
+                                    <>
+                                      <p
+                                        className={`text-sm font-semibold ${
+                                          positive
+                                            ? "text-emerald-400"
+                                            : "text-rose-400"
+                                        }`}
+                                      >
+                                        {positive ? "+" : "−"}
+                                        {formatCurrency(
+                                          Math.abs(item.profitLoss)
+                                        )}
+                                      </p>
+                                      <p
+                                        className={`mt-0.5 text-xs ${
+                                          positive
+                                            ? "text-emerald-400"
+                                            : "text-rose-400"
+                                        }`}
+                                      >
+                                        {positive ? "+" : ""}
+                                        {item.returnPercentage.toFixed(2)}%
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-slate-500">
+                                      Price unavailable
+                                    </p>
+                                  )}
                                 </div>
                               </div>
-                              <div className="shrink-0 text-right">
-                                {item.hasPrice ? (
-                                  <>
-                                    <p
-                                      className={`text-sm font-semibold ${
-                                        positive ? "text-emerald-400" : "text-rose-400"
-                                      }`}
-                                    >
-                                      {positive ? "+" : "−"}
-                                      {formatCurrency(Math.abs(item.profitLoss))}
-                                    </p>
-                                    <p
-                                      className={`mt-0.5 text-xs ${
-                                        positive ? "text-emerald-400" : "text-rose-400"
-                                      }`}
-                                    >
-                                      {positive ? "+" : ""}
-                                      {item.returnPercentage.toFixed(2)}%
-                                    </p>
-                                  </>
-                                ) : (
-                                  <p className="text-xs text-slate-500">
-                                    Price unavailable
-                                  </p>
-                                )}
+
+                              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#142039]">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    positive
+                                      ? "bg-emerald-400"
+                                      : "bg-rose-400"
+                                  }`}
+                                  style={{
+                                    width: `${
+                                      item.hasPrice ? barWidth : 0
+                                    }%`,
+                                  }}
+                                />
                               </div>
                             </div>
-                            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                              <div
-                                className={`h-full rounded-full ${
-                                  positive ? "bg-emerald-400" : "bg-rose-400"
-                                }`}
-                                style={{ width: `${item.hasPrice ? barWidth : 0}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               ) : (
@@ -779,41 +975,50 @@ function Dashboard() {
                     margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                   >
                     <CartesianGrid
-                      stroke="#1e293b"
+                      stroke="#142039"
                       strokeDasharray="4 4"
                       vertical={false}
                     />
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatChartDate}
-                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      tick={{ fill: "#71829e", fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
+                      minTickGap={25}
                     />
                     <YAxis
                       tickFormatter={formatCompactCurrency}
-                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      tick={{ fill: "#71829e", fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                       width={65}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#0b1b36",
-                        border: "1px solid #26364f",
-                        borderRadius: "12px",
+                        background: "#070f1e",
+                        border: "1px solid #1b315c",
+                        borderRadius: "10px",
                         color: "#fff",
                       }}
-                      formatter={(value) => [formatCurrency(value), "Value"]}
+                      formatter={(value) => [
+                        formatCurrency(value),
+                        "Portfolio value",
+                      ]}
                       labelFormatter={formatChartDate}
                     />
                     <Line
                       type="monotone"
                       dataKey="value"
-                      stroke="#3b82f6"
+                      stroke="#5279df"
                       strokeWidth={2.5}
                       dot={false}
-                      activeDot={{ r: 5, fill: "#60a5fa" }}
+                      activeDot={{
+                        r: 5,
+                        fill: "#82a4f4",
+                        stroke: "#070f1e",
+                        strokeWidth: 3,
+                      }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -821,20 +1026,22 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className={`${cardClass} p-5 sm:p-6 xl:col-span-5`}>
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Portfolio allocation
-              </h2>
-              <p className={mutedText}>How your current value is distributed</p>
-            </div>
+          <div className={`${CARD} p-5 sm:p-6 xl:col-span-5`}>
+            <SectionHeading
+              eyebrow="Asset distribution"
+              title="Portfolio allocation"
+              description="See how your current value is distributed."
+            />
 
             {finalAllocationData.length === 0 ? (
-              <div className="flex h-64 items-center justify-center text-sm text-slate-500">
-                No allocation data available.
+              <div className="mt-4">
+                <EmptyState
+                  title="No allocation data yet"
+                  description="Your stock allocation will appear here once market prices are available."
+                />
               </div>
             ) : (
-              <div className="mt-3 grid items-center gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid items-center gap-2 sm:grid-cols-2">
                 <div className="h-60 min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -844,23 +1051,25 @@ function Dashboard() {
                         nameKey="ticker"
                         cx="50%"
                         cy="50%"
-                        innerRadius={58}
-                        outerRadius={88}
+                        innerRadius={62}
+                        outerRadius={92}
                         paddingAngle={3}
                         stroke="none"
                       >
                         {finalAllocationData.map((entry, index) => (
                           <Cell
                             key={`allocation-${entry.ticker}`}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            fill={
+                              CHART_COLORS[index % CHART_COLORS.length]
+                            }
                           />
                         ))}
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          background: "#0b1b36",
-                          border: "1px solid #26364f",
-                          borderRadius: "12px",
+                          background: "#070f1e",
+                          border: "1px solid #1b315c",
+                          borderRadius: "10px",
                           color: "#fff",
                         }}
                         formatter={(value, name) => [
@@ -895,6 +1104,7 @@ function Dashboard() {
                       </span>
                     </div>
                   ))}
+
                   {finalAllocationData.length > 6 && (
                     <p className="text-xs text-slate-500">
                       +{finalAllocationData.length - 6} more holdings
@@ -906,55 +1116,62 @@ function Dashboard() {
 
             <button
               onClick={() => navigate("/portfolio")}
-              className="mt-2 text-sm font-semibold text-blue-400 hover:text-blue-300"
+              className="mt-3 text-sm font-semibold text-blue-400 transition hover:text-blue-300"
             >
-              View full portfolio <span aria-hidden="true">→</span>
+              View full portfolio <span className="ml-1">→</span>
             </button>
           </div>
         </section>
 
         <section className="grid gap-5 lg:grid-cols-12">
-          <div className={`${cardClass} p-5 sm:p-6 lg:col-span-7`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Top holdings</h2>
-                <p className={mutedText}>Your largest positions by current value</p>
-              </div>
-              <button
-                onClick={() => navigate("/portfolio")}
-                className="shrink-0 text-sm font-semibold text-blue-400 hover:text-blue-300"
-              >
-                View all →
-              </button>
-            </div>
-
-            {sortedHoldings.length === 0 ? (
-              <div className="mt-5 rounded-xl border border-dashed border-slate-700 p-6 text-center">
-                <p className="text-sm text-slate-400">
-                  You haven't added any holdings yet.
-                </p>
+          <div className={`${CARD} p-5 sm:p-6 lg:col-span-7`}>
+            <SectionHeading
+              eyebrow="Your investments"
+              title="Top holdings"
+              description="Your largest positions by current market value."
+              action={
                 <button
                   onClick={() => navigate("/portfolio")}
-                  className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                  className="text-sm font-semibold text-blue-400 transition hover:text-blue-300"
                 >
-                  Add your first holding
+                  View all →
                 </button>
+              }
+            />
+
+            {sortedHoldings.length === 0 ? (
+              <div className="mt-5">
+                <EmptyState
+                  title="Your portfolio is waiting"
+                  description="Add your first stock to start tracking its value and performance."
+                  action="Add your first holding"
+                  onClick={() => navigate("/portfolio")}
+                />
               </div>
             ) : (
-              <div className="mt-4 overflow-x-auto">
+              <div className="mt-5 overflow-x-auto">
                 <table className="w-full min-w-[520px] text-left text-sm">
-                  <thead className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
+                  <thead className="border-b border-[#142039] text-[10px] uppercase tracking-[0.14em] text-slate-500">
                     <tr>
-                      <th className="px-3 py-3 font-medium">Ticker</th>
-                      <th className="px-3 py-3 font-medium">Quantity</th>
-                      <th className="px-3 py-3 font-medium">Current price</th>
-                      <th className="px-3 py-3 text-right font-medium">Value</th>
+                      <th className="px-3 py-3 font-semibold">Ticker</th>
+                      <th className="px-3 py-3 font-semibold">Quantity</th>
+                      <th className="px-3 py-3 font-semibold">
+                        Current price
+                      </th>
+                      <th className="px-3 py-3 text-right font-semibold">
+                        Value
+                      </th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {sortedHoldings.slice(0, 5).map((holding, index) => {
-                      const price = Number(marketPrices[holding.ticker] || 0);
+                      const price = Number(
+                        marketPrices[holding.ticker] || 0
+                      );
+
                       let value = price * Number(holding.quantity);
+
                       if (marketCurrencies[holding.ticker] === "USD") {
                         value *= exchangeRate;
                       }
@@ -962,7 +1179,7 @@ function Dashboard() {
                       return (
                         <tr
                           key={holding.id}
-                          className="border-b border-slate-800/70 last:border-0"
+                          className="border-b border-[#142039] transition last:border-0 hover:bg-[#070f1e]"
                         >
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
@@ -980,12 +1197,15 @@ function Dashboard() {
                               </span>
                             </div>
                           </td>
+
                           <td className="px-3 py-3 text-slate-400">
                             {holding.quantity}
                           </td>
+
                           <td className="px-3 py-3 text-slate-300">
                             {price ? formatCurrency(price) : "Unavailable"}
                           </td>
+
                           <td className="px-3 py-3 text-right font-semibold text-white">
                             {formatCurrency(value)}
                           </td>
@@ -998,36 +1218,46 @@ function Dashboard() {
             )}
           </div>
 
-          <div className={`${cardClass} p-5 sm:p-6 lg:col-span-5`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-white">
-                  Risk & diversification
-                </h2>
-                <p className={mutedText}>A concentration-based overview</p>
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  riskLevel === "Low"
-                    ? "bg-emerald-500/10 text-emerald-300"
-                    : riskLevel === "Moderate"
-                    ? "bg-amber-500/10 text-amber-300"
-                    : "bg-rose-500/10 text-rose-300"
-                }`}
-              >
-                {riskLevel} risk
-              </span>
-            </div>
+          <div className={`${CARD} p-5 sm:p-6 lg:col-span-5`}>
+            <SectionHeading
+              eyebrow="Portfolio health"
+              title="Risk & diversification"
+              description="A concentration-based overview of your holdings."
+              action={
+                <span
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    riskLevel === "Low"
+                      ? "bg-emerald-500/10 text-emerald-300"
+                      : riskLevel === "Moderate"
+                      ? "bg-amber-500/10 text-amber-300"
+                      : riskLevel === "High"
+                      ? "bg-rose-500/10 text-rose-300"
+                      : "bg-slate-700/50 text-slate-400"
+                  }`}
+                >
+                  {riskLevel === "Unavailable"
+                    ? "No data"
+                    : `${riskLevel} risk`}
+                </span>
+              }
+            />
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-[#0b1b36] p-4">
-                <p className="text-xs text-slate-500">Diversification score</p>
+              <div className={`${INNER_CARD} p-4`}>
+                <p className="text-xs text-slate-500">
+                  Diversification score
+                </p>
                 <p className="mt-2 text-3xl font-bold text-white">
-                  {diversificationScore}
-                  <span className="text-base text-slate-500">/100</span>
+                  {finalAllocationData.length > 0
+                    ? diversificationScore
+                    : "—"}
+                  {finalAllocationData.length > 0 && (
+                    <span className="text-base text-slate-500">/100</span>
+                  )}
                 </p>
               </div>
-              <div className="rounded-xl bg-[#0b1b36] p-4">
+
+              <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Largest holding</p>
                 <p className="mt-2 truncate text-2xl font-bold text-white">
                   {largestHolding?.ticker || "—"}
@@ -1040,48 +1270,64 @@ function Dashboard() {
               </div>
             </div>
 
-            {largestHolding && (
-              <p className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm leading-6 text-slate-300">
-                <span className="font-semibold text-blue-300">
-                  Velora insight:
-                </span>{" "}
-                {largestHolding.ticker} represents{" "}
-                {largestHolding.percentage.toFixed(1)}% of your portfolio.
-                {largestHolding.percentage >= 50
-                  ? " A large portion of your portfolio is concentrated in one holding."
-                  : " Your portfolio value is spread across multiple holdings."}
+            {largestHolding ? (
+              <div className="mt-4 rounded-xl border border-[#142039] bg-[#070f1e] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-300">
+                  Velora insight
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  <span className="font-semibold text-white">
+                    {largestHolding.ticker}
+                  </span>{" "}
+                  represents{" "}
+                  <span className="font-semibold text-blue-300">
+                    {largestHolding.percentage.toFixed(1)}%
+                  </span>{" "}
+                  of your portfolio.
+                  {largestHolding.percentage >= 50
+                    ? " A large portion of your portfolio is concentrated in one holding."
+                    : " Your portfolio value is spread across multiple holdings."}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-[#142039] bg-[#070f1e] p-4 text-sm leading-6 text-slate-400">
+                Add holdings with available market prices to see your
+                diversification insights.
               </p>
             )}
+
+            <p className="mt-3 text-[11px] leading-5 text-slate-600">
+              This score measures portfolio concentration only. It is not a
+              complete assessment of investment risk.
+            </p>
           </div>
         </section>
 
         <section className="grid gap-5 lg:grid-cols-12">
-          <div className={`${cardClass} p-5 sm:p-6 lg:col-span-7`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
-                  Market updates
-                </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">
-                  Recent news
-                </h2>
-                <p className={mutedText}>
-                  {firstTicker
-                    ? `News preview for ${firstTicker}`
-                    : "Add a holding to see related news"}
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/news")}
-                className="shrink-0 text-sm font-semibold text-blue-400 hover:text-blue-300"
-              >
-                View all →
-              </button>
-            </div>
+          <div className={`${CARD} p-5 sm:p-6 lg:col-span-7`}>
+            <SectionHeading
+              eyebrow="Market updates"
+              title="Recent news"
+              description={
+                firstTicker
+                  ? `Latest news preview for ${firstTicker}.`
+                  : "Add a holding to see related market news."
+              }
+              action={
+                <button
+                  onClick={() => navigate("/news")}
+                  className="text-sm font-semibold text-blue-400 transition hover:text-blue-300"
+                >
+                  View all →
+                </button>
+              }
+            />
 
-            <div className="mt-4 divide-y divide-slate-800">
+            <div className="mt-4 divide-y divide-[#142039]">
               {newsLoading ? (
-                <p className="py-5 text-sm text-slate-500">Loading news...</p>
+                <p className="py-5 text-sm text-slate-500">
+                  Loading market news...
+                </p>
               ) : news.length === 0 ? (
                 <p className="py-5 text-sm text-slate-500">
                   No recent news is available right now.
@@ -1089,21 +1335,27 @@ function Dashboard() {
               ) : (
                 news.slice(0, 4).map((item, index) => {
                   const url = getNewsUrl(item);
+
                   return (
                     <div
-                      key={item.uuid || item.id || `${getNewsTitle(item)}-${index}`}
+                      key={
+                        item.uuid ||
+                        item.id ||
+                        `${getNewsTitle(item)}-${index}`
+                      }
                       className="flex items-start gap-3 py-4 first:pt-1 last:pb-1"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-sm text-blue-300">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#1b315c] bg-[#0b1930] text-sm font-bold text-blue-300">
                         N
                       </span>
+
                       <div className="min-w-0 flex-1">
                         {url ? (
                           <a
                             href={url}
                             target="_blank"
                             rel="noreferrer"
-                            className="line-clamp-2 text-sm font-medium leading-5 text-slate-200 hover:text-blue-300"
+                            className="line-clamp-2 text-sm font-medium leading-5 text-slate-200 transition hover:text-blue-300"
                           >
                             {getNewsTitle(item)}
                           </a>
@@ -1112,10 +1364,15 @@ function Dashboard() {
                             {getNewsTitle(item)}
                           </p>
                         )}
+
                         <p className="mt-1 text-xs text-slate-500">
                           {getNewsSource(item)}
                         </p>
                       </div>
+
+                      {url && (
+                        <span className="shrink-0 text-slate-600">↗</span>
+                      )}
                     </div>
                   );
                 })
@@ -1123,35 +1380,32 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className={`${cardClass} p-5 sm:p-6 lg:col-span-5`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
-                  Price monitoring
-                </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">
-                  Stock alerts
-                </h2>
-                <p className={mutedText}>Your alert activity at a glance</p>
-              </div>
-              <button
-                onClick={() => navigate("/alerts")}
-                className="shrink-0 text-sm font-semibold text-blue-400 hover:text-blue-300"
-              >
-                Manage →
-              </button>
-            </div>
+          <div className={`${CARD} p-5 sm:p-6 lg:col-span-5`}>
+            <SectionHeading
+              eyebrow="Price monitoring"
+              title="Stock alerts"
+              description="Keep track of your alert activity."
+              action={
+                <button
+                  onClick={() => navigate("/alerts")}
+                  className="text-sm font-semibold text-blue-400 transition hover:text-blue-300"
+                >
+                  Manage →
+                </button>
+              }
+            />
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-[#0b1b36] p-4">
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Active alerts</p>
-                <p className="mt-1 text-2xl font-bold text-white">
+                <p className="mt-2 text-2xl font-bold text-white">
                   {alertsLoading ? "—" : activeAlerts.length}
                 </p>
               </div>
-              <div className="rounded-xl bg-[#0b1b36] p-4">
+
+              <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Triggered alerts</p>
-                <p className="mt-1 text-2xl font-bold text-emerald-400">
+                <p className="mt-2 text-2xl font-bold text-emerald-400">
                   {alertsLoading ? "—" : triggeredAlerts.length}
                 </p>
               </div>
@@ -1161,23 +1415,26 @@ function Dashboard() {
               {alertsLoading ? (
                 <p className="text-sm text-slate-500">Loading alerts...</p>
               ) : triggeredAlerts.length === 0 ? (
-                <p className="rounded-xl bg-[#0b1b36] p-4 text-sm text-slate-400">
-                  No triggered alerts yet. Check your active alerts for updates.
+                <p className="rounded-xl border border-[#142039] bg-[#070f1e] p-4 text-sm text-slate-400">
+                  No triggered alerts yet. Check your active alerts for
+                  updates.
                 </p>
               ) : (
                 triggeredAlerts.slice(0, 3).map((alert) => (
                   <div
                     key={alert.id}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-[#0b1b36] p-3"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[#142039] bg-[#070f1e] p-3"
                   >
                     <div>
                       <p className="text-sm font-semibold text-white">
                         {alert.ticker}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Went {alert.condition} {formatCurrency(alert.target_price)}
+                        Went {alert.condition}{" "}
+                        {formatCurrency(alert.target_price)}
                       </p>
                     </div>
+
                     <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
                       Triggered
                     </span>
@@ -1189,7 +1446,7 @@ function Dashboard() {
             <button
               onClick={handleCheckAlerts}
               disabled={checkingAlerts}
-              className="mt-4 w-full rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-4 w-full rounded-xl border border-[#24458f] bg-[#14264a] px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-[#1b315c] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {checkingAlerts ? "Checking alerts..." : "Check alerts now"}
             </button>
@@ -1199,6 +1456,7 @@ function Dashboard() {
                 {alertMessage}
               </p>
             )}
+
             {alertError && (
               <p role="alert" className="mt-3 text-xs text-rose-300">
                 {alertError}
@@ -1207,24 +1465,25 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className={`${cardClass} overflow-hidden p-5 sm:p-6`}>
+        <section className={`${CARD} overflow-hidden p-5 sm:p-6`}>
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">
-                Forecast preview
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
+                Predictive insights
               </p>
               <h2 className="mt-1 text-lg font-semibold text-white">
                 Seven-day stock forecast
               </h2>
-              <p className={mutedText}>
+              <p className={MUTED}>
                 {firstTicker
-                  ? `A quick look at the forecast for ${firstTicker}`
-                  : "Add a holding to view a stock forecast"}
+                  ? `A quick look at the forecast for ${firstTicker}.`
+                  : "Add a holding to view a stock forecast."}
               </p>
             </div>
+
             <button
               onClick={() => navigate("/forecast")}
-              className="w-fit rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/20"
+              className="w-fit rounded-xl border border-[#24458f] bg-[#14264a] px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-[#1b315c]"
             >
               Explore forecasts →
             </button>
@@ -1235,71 +1494,81 @@ function Dashboard() {
               Loading forecast preview...
             </p>
           ) : !forecast ? (
-            <p className="mt-5 rounded-xl bg-[#0b1b36] p-4 text-sm text-slate-400">
-              Forecast preview is unavailable right now. You can still open the
-              Forecast page to select a stock.
-            </p>
+            <div className="mt-5">
+              <EmptyState
+                title="Forecast preview unavailable"
+                description="You can still open the Forecast page and select a stock to explore its forecast."
+                action="Open forecasts"
+                onClick={() => navigate("/forecast")}
+              />
+            </div>
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <div className="rounded-xl bg-[#0b1b36] p-4">
+              <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Selected stock</p>
                 <p className="mt-2 text-2xl font-bold text-white">
                   {firstTicker}
                 </p>
               </div>
-              <div className="rounded-xl bg-[#0b1b36] p-4">
+
+              <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Current price</p>
                 <p className="mt-2 text-2xl font-bold text-white">
                   {formatCurrency(forecastCurrentPrice)}
                 </p>
               </div>
-              <div className="rounded-xl bg-[#0b1b36] p-4">
+
+              <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Forecast trend</p>
                 <p className="mt-2 text-2xl font-bold capitalize text-blue-300">
                   {String(forecastTrend)}
                 </p>
+
                 {forecastChange !== undefined && (
                   <p className="mt-1 text-xs text-slate-400">
-                    Expected change: {Number(forecastChange).toFixed(2)}%
+                    Expected change:{" "}
+                    {Number(forecastChange).toFixed(2)}%
                   </p>
                 )}
               </div>
+
               {forecastPoints.length > 0 && (
-                <div className="h-44 md:col-span-3">
+                <div className="h-52 min-w-0 rounded-xl border border-[#142039] bg-[#070f1e] p-3 md:col-span-3">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={forecastPoints}>
                       <CartesianGrid
-                        stroke="#1e293b"
+                        stroke="#142039"
                         strokeDasharray="4 4"
                         vertical={false}
                       />
                       <XAxis
                         dataKey="day"
-                        tick={{ fill: "#64748b", fontSize: 10 }}
+                        tick={{ fill: "#71829e", fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
                       />
                       <YAxis
                         domain={["auto", "auto"]}
-                        tick={{ fill: "#64748b", fontSize: 10 }}
+                        tick={{ fill: "#71829e", fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
                         width={55}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#0b1b36",
-                          border: "1px solid #26364f",
-                          borderRadius: "12px",
+                          background: "#070f1e",
+                          border: "1px solid #1b315c",
+                          borderRadius: "10px",
                           color: "#fff",
                         }}
                       />
                       <Line
                         type="monotone"
                         dataKey="price"
-                        stroke="#22d3ee"
-                        strokeWidth={2}
+                        stroke="#648eea"
+                        strokeWidth={2.5}
                         dot={false}
+                        activeDot={{ r: 5 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -1307,22 +1576,23 @@ function Dashboard() {
               )}
             </div>
           )}
-          <p className="mt-4 text-xs text-slate-600">
-            Forecasts are estimates based on historical data and are not
+
+          <p className="mt-4 text-[11px] leading-5 text-slate-600">
+            Forecasts are estimates based on historical data. They are not
             guaranteed predictions or financial advice.
           </p>
         </section>
 
         <section>
           <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
               Explore Velora
             </p>
             <h2 className="mt-1 text-xl font-semibold text-white">
-              Everything you need, in one place
+              Your workspace, connected
             </h2>
-            <p className={mutedText}>
-              Jump directly to any part of your investment workspace.
+            <p className={MUTED}>
+              Jump directly to the tools and features you need.
             </p>
           </div>
 
@@ -1331,27 +1601,27 @@ function Dashboard() {
               <button
                 key={link.path}
                 onClick={() => navigate(link.path)}
-                className="group rounded-2xl border border-slate-800 bg-[#08152d] p-5 text-left transition hover:-translate-y-1 hover:border-blue-500/50 hover:bg-[#0b1b36]"
+                className="group rounded-2xl border border-[#142039] bg-[#050b18] p-5 text-left transition duration-200 hover:-translate-y-1 hover:border-[#24458f] hover:bg-[#070f1e]"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-xl text-blue-300">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#1b315c] bg-[#0b1930] text-xl text-blue-300 transition group-hover:bg-[#14264a]">
                   {link.symbol}
                 </span>
-                <h3 className="mt-4 font-semibold text-white">{link.title}</h3>
+
+                <h3 className="mt-4 font-semibold text-white">
+                  {link.title}
+                </h3>
+
                 <p className="mt-2 min-h-10 text-sm leading-5 text-slate-400">
                   {link.description}
                 </p>
-                <p className="mt-4 text-sm font-semibold text-blue-400 group-hover:text-blue-300">
-                  {link.action} <span aria-hidden="true">→</span>
+
+                <p className="mt-4 text-sm font-semibold text-blue-400 transition group-hover:text-blue-300">
+                  {link.action} <span className="ml-1">→</span>
                 </p>
               </button>
             ))}
           </div>
         </section>
-
-        <footer className="flex flex-col justify-between gap-2 border-t border-slate-800 py-5 text-xs text-slate-600 sm:flex-row">
-          <span>Velora · Portfolio overview</span>
-          <span>USD → INR: ₹{exchangeRate.toFixed(2)}</span>
-        </footer>
       </main>
     </div>
   );

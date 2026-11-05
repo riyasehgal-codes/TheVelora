@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../api/client";
+import { saveAuthTokens } from "../utils/auth";
 
 
 function Login() {
@@ -64,15 +65,8 @@ function Login() {
 
 
       // Store JWT tokens.
-      localStorage.setItem(
-        "accessToken",
-        response.data.access
-      );
-
-      localStorage.setItem(
-        "refreshToken",
-        response.data.refresh
-      );
+      // Store JWT tokens according to Remember me.
+      saveAuthTokens(response.data, rememberMe);
 
 
       // Login successful.

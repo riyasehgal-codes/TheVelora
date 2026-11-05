@@ -1,5 +1,7 @@
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework.exceptions import APIException
 
 from .models import (
     Holding,
@@ -8,11 +10,23 @@ from .models import (
     ChatMessage,
 )
 
+from .market_data import (
+    validate_ticker,
+    InvalidTickerError,
+    MarketDataUnavailableError,
+)
+
+
+class MarketDataUnavailableAPIException(APIException):
+    status_code = 503
+    default_detail = (
+        "The market data service is temporarily unavailable. "
+        "Please try again."
+    )
+    default_code = "market_data_unavailable"
+
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """
-    Converts registration data from React into a Django User.
-    """
 
     password = serializers.CharField(write_only=True)
 
@@ -29,9 +43,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class HoldingSerializer(serializers.ModelSerializer):
-    """
-    Converts Holding model data into JSON.
-    """
 
     class Meta:
         model = Holding
@@ -50,11 +61,22 @@ class HoldingSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate_ticker(self, value):
+        ticker = value.strip().upper()
+
+        try:
+            validate_ticker(ticker)
+
+        except InvalidTickerError as error:
+            raise serializers.ValidationError(str(error))
+
+        except MarketDataUnavailableError as error:
+            raise MarketDataUnavailableAPIException(str(error))
+
+        return ticker
+
 
 class AlertSerializer(serializers.ModelSerializer):
-    """
-    Converts Alert model data into JSON.
-    """
 
     class Meta:
         model = Alert
@@ -77,9 +99,6 @@ class AlertSerializer(serializers.ModelSerializer):
 
 
 class ChatConversationSerializer(serializers.ModelSerializer):
-    """
-    Serializes conversation information.
-    """
 
     class Meta:
         model = ChatConversation
@@ -98,9 +117,6 @@ class ChatConversationSerializer(serializers.ModelSerializer):
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
-    """
-    Serializes individual chat messages.
-    """
 
     class Meta:
         model = ChatMessage

@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
@@ -11,82 +11,76 @@ import Alerts from "./pages/Alerts";
 import AIChat from "./pages/AIChat";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import Footer from "./components/Footer";
 
 function App() {
+  const location = useLocation();
+
+  const showFooter = !["/login", "/register"].includes(location.pathname);
+
   return (
-    <Routes>
+    <>
+      <Routes>
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
 
-      {/* PUBLIC ROUTES */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/register"
-        element={<Register />}
-      />
+        <Route
+          path="/portfolio"
+          element={
+            <ProtectedRoute>
+              <Portfolio />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/login"
-        element={<Login />}
-      />
+        <Route
+          path="/forecast"
+          element={
+            <ProtectedRoute>
+              <Forecast />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* PROTECTED ROUTES */}
+        <Route
+          path="/news"
+          element={
+            <ProtectedRoute>
+              <News />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/alerts"
+          element={
+            <ProtectedRoute>
+              <Alerts />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/portfolio"
-        element={
-          <ProtectedRoute>
-            <Portfolio />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/ai-chat"
+          element={
+            <ProtectedRoute>
+              <AIChat />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
 
-      <Route
-        path="/forecast"
-        element={
-          <ProtectedRoute>
-            <Forecast />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/news"
-        element={
-          <ProtectedRoute>
-            <News />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/alerts"
-        element={
-          <ProtectedRoute>
-            <Alerts />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* PHASE 7: AI CHATBOT */}
-
-      <Route
-        path="/ai-chat"
-        element={
-          <ProtectedRoute>
-            <AIChat />
-          </ProtectedRoute>
-        }
-      />
-
-    </Routes>
+      {showFooter && <Footer />}
+    </>
   );
 }
 

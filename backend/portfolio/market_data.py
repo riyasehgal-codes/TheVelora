@@ -1,5 +1,6 @@
 
 import logging
+import re
 
 import pandas as pd
 import yfinance as yf
@@ -8,8 +9,6 @@ import yfinance as yf
 logger = logging.getLogger(__name__)
 
 
-# Common Indian stocks listed on the NSE.
-# These symbols are converted to Yahoo Finance's .NS format.
 INDIAN_STOCKS = {
     "TCS",
     "RELIANCE",
@@ -33,40 +32,111 @@ INDIAN_STOCKS = {
 }
 
 
-def normalize_ticker(ticker):
-    """
-    Convert known Indian stock symbols to Yahoo Finance symbols.
+class InvalidTickerError(Exception):
+    """Raised when a stock ticker does not exist."""
 
-    Examples:
-        TCS -> TCS.NS
-        RELIANCE -> RELIANCE.NS
-        AAPL -> AAPL
-        AMZN -> AMZN
-        AAPL.NS -> AAPL.NS
-    """
+
+class MarketDataUnavailableError(Exception):
+    """Raised when the market data provider cannot be reached."""
+
+
+def normalize_ticker(ticker):
     ticker = ticker.upper().strip()
 
     if not ticker:
         raise ValueError("Stock ticker cannot be empty.")
 
-    # Keep explicitly supplied exchange suffixes unchanged.
+    if not re.fullmatch(r"[A-Z0-9.^=_-]{1,30}", ticker):
+        raise ValueError("Please enter a valid stock ticker format.")
+
     if "." in ticker:
         return ticker
 
     if ticker in INDIAN_STOCKS:
         return f"{ticker}.NS"
 
-    # Unknown symbols are tried as supplied rather than
-    # incorrectly assuming that they are Indian stocks.
     return ticker
 
 
-def get_exchange_rate(from_currency, to_currency="INR"):
-    """
-    Fetch the latest available currency exchange rate.
+def _get_ticker_candidates(ticker):
+    original = ticker.upper().strip()
+    normalized = normalize_ticker(original)
 
-    Returns a float, or None if the rate is unavailable.
+    candidates = [normalized]
+
+    if normalized != original:
+        candidates.append(original)
+
+    return list(dict.fromkeys(candidates))
+
+
+def validate_ticker(ticker):
     """
+    Verify that a ticker has usable historical market data.
+
+    Invalid symbols raise InvalidTickerError.
+    Provider/network failures raise MarketDataUnavailableError.
+    """
+
+    candidates = _get_ticker_candidates(ticker)
+    provider_errors = []
+
+    for yahoo_ticker in candidates:
+        try:
+            data = yf.Ticker(yahoo_ticker).history(
+                period="1mo",
+                auto_adjust=True,
+                raise_errors=True,
+            )
+
+            if data is not None and not data.empty:
+                if "Close" in data.columns:
+                    prices = pd.to_numeric(
+                        data["Close"],
+                        errors="coerce",
+                    ).dropna()
+
+                    if not prices.empty:
+                        return yahoo_ticker
+
+        except Exception as error:
+            error_message = str(error).lower()
+
+            invalid_messages = [
+                "possibly delisted",
+                "no timezone found",
+                "quote not found",
+                "symbol may be delisted",
+                "no price data found",
+            ]
+
+            if any(
+                message in error_message
+                for message in invalid_messages
+            ):
+                continue
+
+            logger.warning(
+                "Ticker validation failed for %s: %s",
+                yahoo_ticker,
+                error,
+            )
+
+            provider_errors.append(error)
+
+    if provider_errors:
+        raise MarketDataUnavailableError(
+            "We could not verify this stock right now because "
+            "the market data service is unavailable. Please try again."
+        )
+
+    raise InvalidTickerError(
+        f"'{ticker.upper().strip()}' is not a valid stock ticker. "
+        "Please check the symbol and try again."
+    )
+
+
+def get_exchange_rate(from_currency, to_currency="INR"):
     from_currency = from_currency.upper().strip()
     to_currency = to_currency.upper().strip()
 
@@ -82,7 +152,8 @@ def get_exchange_rate(from_currency, to_currency="INR"):
             return None
 
         prices = pd.to_numeric(
-            data["Close"], errors="coerce"
+            data["Close"],
+            errors="coerce",
         ).dropna()
 
         if prices.empty:
@@ -99,7 +170,6 @@ def get_exchange_rate(from_currency, to_currency="INR"):
 
 
 def _get_history(yahoo_ticker, period="1mo"):
-    """Fetch market history and return None if unavailable."""
     try:
         data = yf.Ticker(yahoo_ticker).history(
             period=period,
@@ -110,9 +180,12 @@ def _get_history(yahoo_ticker, period="1mo"):
             return None
 
         data = data.copy()
+
         data["Close"] = pd.to_numeric(
-            data["Close"], errors="coerce"
+            data["Close"],
+            errors="coerce",
         )
+
         data = data.dropna(subset=["Close"])
 
         return data if not data.empty else None
@@ -125,35 +198,7 @@ def _get_history(yahoo_ticker, period="1mo"):
         return None
 
 
-def _get_ticker_candidates(ticker):
-    """
-    Return the appropriate Yahoo Finance symbol candidates.
-
-    Known Indian stocks use NSE symbols. Other stocks are
-    tried using the original symbol.
-    """
-    original = ticker.upper().strip()
-    normalized = normalize_ticker(original)
-
-    candidates = [normalized]
-
-    # Allow fallback to the original symbol if an NSE lookup
-    # fails for a known Indian stock.
-    if normalized != original:
-        candidates.append(original)
-
-    return list(dict.fromkeys(candidates))
-
-
 def get_stock_price(ticker):
-    """
-    Fetch the latest available stock price and currency.
-
-    Examples:
-        TCS -> TCS.NS, INR
-        AAPL -> AAPL, USD
-        AAPL.NS -> AAPL.NS, INR
-    """
     candidates = _get_ticker_candidates(ticker)
 
     for yahoo_ticker in candidates:
@@ -176,17 +221,13 @@ def get_stock_price(ticker):
         }
 
     raise ValueError(
-        f"No recent market price was found for {ticker.upper().strip()}. "
+        f"No recent market price was found for "
+        f"{ticker.upper().strip()}. "
         "Check the ticker symbol and try again."
     )
 
 
 def get_historical_prices(ticker, period="1mo"):
-    """
-    Return historical closing prices as a list of dictionaries.
-
-    Supported periods include 1mo, 3mo, 6mo, and 1y.
-    """
     allowed_periods = {"1mo", "3mo", "6mo", "1y"}
 
     if period not in allowed_periods:
