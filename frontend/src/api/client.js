@@ -1,7 +1,10 @@
 
 import axios from "axios";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://127.0.0.1:8000/api"
+).replace(/\/$/, "");
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,7 +41,6 @@ const clearAuthTokens = () => {
 
 let refreshPromise = null;
 
-// Attach the access token to API requests.
 api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
@@ -53,7 +55,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Automatically refresh expired access tokens.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -115,7 +116,6 @@ api.interceptors.response.use(
 
             storage.setItem("accessToken", newAccessToken);
 
-            // SimpleJWT returns a new refresh token when rotation is enabled.
             if (response.data.refresh) {
               storage.setItem(
                 "refreshToken",
@@ -152,18 +152,10 @@ api.interceptors.response.use(
   }
 );
 
-// ============================================================
-// MARKET PRICE
-// ============================================================
-
 export const getMarketPrice = async (ticker) => {
   const response = await api.get(`/market-price/${ticker}/`);
   return response.data;
 };
-
-// ============================================================
-// EXCHANGE RATE
-// ============================================================
 
 export const getExchangeRate = async (
   fromCurrency,
@@ -175,10 +167,6 @@ export const getExchangeRate = async (
 
   return response.data;
 };
-
-// ============================================================
-// HISTORICAL PRICES
-// ============================================================
 
 export const getHistoricalPrices = async (
   ticker,
@@ -194,27 +182,15 @@ export const getHistoricalPrices = async (
   return response.data;
 };
 
-// ============================================================
-// FORECAST
-// ============================================================
-
 export const getForecast = async (ticker) => {
   const response = await api.get(`/forecast/${ticker}/`);
   return response.data;
 };
 
-// ============================================================
-// NEWS
-// ============================================================
-
 export const getStockNews = async (ticker) => {
   const response = await api.get(`/news/${ticker}/`);
   return response.data;
 };
-
-// ============================================================
-// ALERTS
-// ============================================================
 
 export const getAlerts = async () => {
   const response = await api.get("/alerts/");
@@ -235,10 +211,6 @@ export const checkAlerts = async () => {
   const response = await api.post("/alerts/check/");
   return response.data;
 };
-
-// ============================================================
-// AI-3: PERSISTENT CHAT HISTORY
-// ============================================================
 
 export const getChatConversations = async () => {
   const response = await api.get("/chat/conversations/");
@@ -277,9 +249,5 @@ export const deleteChatConversation = async (conversationId) => {
 
   return response.data;
 };
-
-// ============================================================
-// EXPORT AXIOS INSTANCE
-// ============================================================
 
 export default api;
