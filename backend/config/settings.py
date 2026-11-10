@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -79,30 +81,41 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DB_ENGINE = os.environ.get(
-    "DB_ENGINE",
-    "django.db.backends.sqlite3",
-)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if DB_ENGINE == "django.db.backends.postgresql":
+if DATABASE_URL:
     DATABASES = {
-        "default": {
-            "ENGINE": DB_ENGINE,
-            "NAME": os.environ.get("DB_NAME", ""),
-            "USER": os.environ.get("DB_USER", ""),
-            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
-            "CONN_MAX_AGE": 60,
-        }
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
 else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+    DB_ENGINE = os.environ.get(
+        "DB_ENGINE",
+        "django.db.backends.sqlite3",
+    )
+
+    if DB_ENGINE == "django.db.backends.postgresql":
+        DATABASES = {
+            "default": {
+                "ENGINE": DB_ENGINE,
+                "NAME": os.environ.get("DB_NAME", ""),
+                "USER": os.environ.get("DB_USER", ""),
+                "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+                "HOST": os.environ.get("DB_HOST", "localhost"),
+                "PORT": os.environ.get("DB_PORT", "5432"),
+                "CONN_MAX_AGE": 60,
+            }
         }
-    }
+    else:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -128,6 +141,15 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
