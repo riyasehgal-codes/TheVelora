@@ -466,7 +466,7 @@ function Forecast() {
 
         <Navbar />
 
-        <main className="mx-auto max-w-[1400px] px-8 py-8">
+        <main className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
 
           <p className="text-sm text-slate-500">
             Loading forecast...
@@ -493,13 +493,13 @@ function Forecast() {
 
         <Navbar />
 
-        <main className="mx-auto max-w-[1400px] px-8 py-10">
+        <main className="mx-auto w-full max-w-[1400px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-10">
 
           <p className="text-xs uppercase tracking-[0.25em] text-blue-400">
             FORECAST
           </p>
 
-          <h1 className="mt-2 text-3xl font-semibold">
+          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
             Market outlook
           </h1>
 
@@ -547,14 +547,14 @@ function Forecast() {
       </div>
 
 
-      <main className="relative mx-auto max-w-[1400px] px-8 py-8">
+      <main className="relative mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
 
 
         {/* ======================================
             HEADER
         ====================================== */}
 
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
           <div>
 
@@ -562,7 +562,7 @@ function Forecast() {
               FORECAST
             </p>
 
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
               Market outlook
             </h1>
 
@@ -576,7 +576,7 @@ function Forecast() {
 
           {/* STOCK SELECTOR */}
 
-          <div className="w-52">
+          <div className="w-full sm:w-52 sm:shrink-0">
 
             <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-slate-500">
               Holding
@@ -632,7 +632,7 @@ function Forecast() {
 
         {forecastLoading ? (
 
-          <div className="mt-7 grid grid-cols-4 gap-4">
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
 
             {[1, 2, 3, 4].map(
               (item) => (
@@ -656,10 +656,10 @@ function Forecast() {
                 SUMMARY CARDS
             ================================== */}
 
-            <div className="mt-7 grid grid-cols-4 gap-4">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
 
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-4">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 sm:px-5">
 
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   Current price
@@ -678,7 +678,7 @@ function Forecast() {
               </div>
 
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-4">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 sm:px-5">
 
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   7-day estimate
@@ -697,7 +697,7 @@ function Forecast() {
               </div>
 
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-4">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 sm:px-5">
 
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   Expected change
@@ -724,7 +724,7 @@ function Forecast() {
               </div>
 
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-4">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 sm:px-5">
 
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   Short-term trend
@@ -749,9 +749,9 @@ function Forecast() {
                 BEAUTIFUL FORECAST GRAPH
             ================================== */}
 
-            <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.025] px-6 py-5">
+            <div className="mt-5 min-w-0 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 sm:px-6 sm:py-5">
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                 <div>
 
@@ -769,7 +769,7 @@ function Forecast() {
 
                 {/* LEGEND */}
 
-                <div className="flex items-center gap-5">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 
                   <div className="flex items-center gap-2">
 
@@ -799,7 +799,7 @@ function Forecast() {
 
               {/* GRAPH */}
 
-              <div className="mt-5 h-[330px]">
+              <div className="mt-4 h-[260px] w-full min-w-0 sm:mt-5 sm:h-[330px]">
 
                 {chartData.length === 0 ? (
 
@@ -920,7 +920,7 @@ function Forecast() {
                         }}
                         axisLine={false}
                         tickLine={false}
-                        width={55}
+                        width={48}
                         tickFormatter={(value) =>
                           `₹${Number(
                             value
@@ -1067,7 +1067,7 @@ function Forecast() {
 
               {/* CHART FOOTER */}
 
-              <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-3">
+              <div className="mt-2 flex flex-col gap-2 border-t border-white/5 pt-3 sm:flex-row sm:items-center sm:justify-between">
 
                 <p className="text-[10px] text-slate-600">
                   Current price:{" "}
@@ -1096,12 +1096,12 @@ function Forecast() {
                 BOTTOM SECTION
             ================================== */}
 
-            <div className="mt-5 grid grid-cols-3 gap-5">
+            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
 
 
               {/* DAILY FORECAST */}
 
-              <div className="col-span-2 rounded-xl border border-white/10 bg-white/[0.025] px-5 py-5">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 sm:px-5 sm:py-5 lg:col-span-2">
 
                 <div>
 
@@ -1117,9 +1117,9 @@ function Forecast() {
                 </div>
 
 
-                <div className="mt-4 overflow-hidden">
+                <div className="mt-4 overflow-x-auto">
 
-                  <table className="w-full">
+                  <table className="w-full min-w-[500px]">
 
                     <thead>
 
@@ -1198,7 +1198,7 @@ function Forecast() {
 
               {/* MODEL INFO */}
 
-              <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:gap-5">
 
                 <div className="rounded-xl border border-white/10 bg-white/[0.025] p-5">
 

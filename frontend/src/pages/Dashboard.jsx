@@ -42,18 +42,18 @@ const MUTED = "text-sm text-slate-500";
 
 function SectionHeading({ eyebrow, title, description, action }) {
   return (
-    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+    <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
       <div>
         {eyebrow && (
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">
+        <h2 className="mt-1 text-base font-semibold tracking-tight text-white sm:text-lg">
           {title}
         </h2>
         {description && (
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500 sm:text-sm">{description}</p>
         )}
       </div>
       {action}
@@ -612,9 +612,9 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020510] text-white">
+      <div className="min-h-screen w-full overflow-x-clip bg-[#020510] text-white">
         <Navbar />
-        <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1440px] space-y-5 px-3 py-6 sm:space-y-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
           <div className="animate-pulse space-y-5">
             <div className="h-4 w-36 rounded bg-[#142039]" />
             <div className="h-9 w-72 rounded-lg bg-[#142039]" />
@@ -638,7 +638,7 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#020510] text-slate-100">
+    <div className="min-h-screen w-full overflow-x-clip bg-[#020510] text-slate-100">
       <style>{`
         main [class*="bg-[#081832]"],
         main [class*="bg-[#07142b]"],
@@ -689,8 +689,8 @@ function Dashboard() {
 
       <Navbar />
 
-      <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-        <section className="rounded-2xl border border-[#142039] bg-[#050b18] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.22)] sm:p-8">
+      <main className="mx-auto w-full max-w-[1440px] space-y-5 px-3 py-5 sm:space-y-6 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
+        <section className="min-w-0 rounded-2xl border border-[#142039] bg-[#050b18] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.22)] sm:p-6 lg:p-8">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <div>
               <div className="mb-3 flex items-center gap-2">
@@ -700,7 +700,7 @@ function Dashboard() {
                 </p>
               </div>
 
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
                 Your financial snapshot
               </h1>
 
@@ -712,14 +712,14 @@ function Dashboard() {
 
             <button
               onClick={() => navigate("/portfolio")}
-              className="w-fit rounded-xl border border-blue-500/30 bg-[#14264a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1b315c]"
+              className="w-full rounded-xl border border-blue-500/30 bg-[#14264a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1b315c] sm:w-fit"
             >
               View portfolio <span className="ml-2">↗</span>
             </button>
           </div>
 
-          <div className="mt-7 flex flex-wrap gap-3 border-t border-[#142039] pt-5">
-            <div className="rounded-lg border border-[#142039] bg-[#070f1e] px-4 py-2.5">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-[#142039] pt-4 sm:mt-7 sm:gap-3 sm:pt-5">
+            <div className="min-w-[calc(50%-0.25rem)] flex-1 rounded-lg border border-[#142039] bg-[#070f1e] px-3 py-2.5 sm:min-w-0 sm:px-4">
               <p className="text-[10px] uppercase tracking-wider text-slate-500">
                 Your holdings
               </p>
@@ -727,7 +727,7 @@ function Dashboard() {
                 {holdings.length} {holdings.length === 1 ? "stock" : "stocks"}
               </p>
             </div>
-            <div className="rounded-lg border border-[#142039] bg-[#070f1e] px-4 py-2.5">
+            <div className="min-w-[calc(50%-0.25rem)] flex-1 rounded-lg border border-[#142039] bg-[#070f1e] px-3 py-2.5 sm:min-w-0 sm:px-4">
               <p className="text-[10px] uppercase tracking-wider text-slate-500">
                 Active alerts
               </p>
@@ -735,7 +735,7 @@ function Dashboard() {
                 {alertsLoading ? "—" : activeAlerts.length}
               </p>
             </div>
-            <div className="rounded-lg border border-[#142039] bg-[#070f1e] px-4 py-2.5">
+            <div className="min-w-[calc(50%-0.25rem)] flex-1 rounded-lg border border-[#142039] bg-[#070f1e] px-3 py-2.5 sm:min-w-0 sm:px-4">
               <p className="text-[10px] uppercase tracking-wider text-slate-500">
                 Portfolio currency
               </p>
@@ -744,7 +744,7 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className={`${CARD} p-5 sm:p-6`}>
+        <section className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6`}>
           <SectionHeading
             eyebrow="Portfolio overview"
             title="Portfolio at a glance"
@@ -756,7 +756,7 @@ function Dashboard() {
             }
           />
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:mt-5 xl:grid-cols-4">
             {[
               {
                 label: "Total invested",
@@ -821,14 +821,14 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-12">
-          <div className={`${CARD} p-5 sm:p-6 xl:col-span-7`}>
+        <section className="grid min-w-0 grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-12">
+          <div className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6 xl:col-span-7`}>
             <SectionHeading
               eyebrow="Performance"
               title="Portfolio performance"
               description="Track how your portfolio value changes over time."
               action={
-                <div className="flex gap-1 rounded-lg border border-[#142039] bg-[#030814] p-1">
+                <div className="flex max-w-full flex-wrap gap-1 rounded-lg border border-[#142039] bg-[#030814] p-1">
                   {periods.map((period) => (
                     <button
                       key={period.value}
@@ -847,7 +847,7 @@ function Dashboard() {
               }
             />
 
-            <div className="mt-5 h-72">
+            <div className="mt-4 h-56 min-w-0 sm:mt-5 sm:h-72">
               {chartLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-500">
                   Loading performance data...
@@ -1026,7 +1026,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className={`${CARD} p-5 sm:p-6 xl:col-span-5`}>
+          <div className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6 xl:col-span-5`}>
             <SectionHeading
               eyebrow="Asset distribution"
               title="Portfolio allocation"
@@ -1041,8 +1041,8 @@ function Dashboard() {
                 />
               </div>
             ) : (
-              <div className="mt-4 grid items-center gap-2 sm:grid-cols-2">
-                <div className="h-60 min-w-0">
+              <div className="mt-4 grid min-w-0 grid-cols-1 items-center gap-3 sm:grid-cols-2">
+                <div className="h-52 min-w-0 sm:h-60">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -1123,8 +1123,8 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-12">
-          <div className={`${CARD} p-5 sm:p-6 lg:col-span-7`}>
+        <section className="grid min-w-0 grid-cols-1 gap-4 lg:gap-5 lg:grid-cols-12">
+          <div className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6 lg:col-span-7`}>
             <SectionHeading
               eyebrow="Your investments"
               title="Top holdings"
@@ -1149,8 +1149,8 @@ function Dashboard() {
                 />
               </div>
             ) : (
-              <div className="mt-5 overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm">
+              <div className="mt-5 max-w-full overflow-x-auto overscroll-x-contain rounded-lg">
+                <table className="w-full min-w-[500px] text-left text-xs sm:text-sm">
                   <thead className="border-b border-[#142039] text-[10px] uppercase tracking-[0.14em] text-slate-500">
                     <tr>
                       <th className="px-3 py-3 font-semibold">Ticker</th>
@@ -1218,7 +1218,7 @@ function Dashboard() {
             )}
           </div>
 
-          <div className={`${CARD} p-5 sm:p-6 lg:col-span-5`}>
+          <div className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6 lg:col-span-5`}>
             <SectionHeading
               eyebrow="Portfolio health"
               title="Risk & diversification"
@@ -1242,7 +1242,7 @@ function Dashboard() {
               }
             />
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:mt-5">
               <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">
                   Diversification score
@@ -1303,8 +1303,8 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-12">
-          <div className={`${CARD} p-5 sm:p-6 lg:col-span-7`}>
+        <section className="grid min-w-0 grid-cols-1 gap-4 lg:gap-5 lg:grid-cols-12">
+          <div className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6 lg:col-span-7`}>
             <SectionHeading
               eyebrow="Market updates"
               title="Recent news"
@@ -1380,7 +1380,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className={`${CARD} p-5 sm:p-6 lg:col-span-5`}>
+          <div className={`${CARD} min-w-0 p-4 sm:p-5 lg:p-6 lg:col-span-5`}>
             <SectionHeading
               eyebrow="Price monitoring"
               title="Stock alerts"
@@ -1395,7 +1395,7 @@ function Dashboard() {
               }
             />
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:mt-5">
               <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Active alerts</p>
                 <p className="mt-2 text-2xl font-bold text-white">
@@ -1465,8 +1465,8 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className={`${CARD} overflow-hidden p-5 sm:p-6`}>
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <section className={`${CARD} min-w-0 overflow-hidden p-4 sm:p-5 lg:p-6`}>
+          <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
                 Predictive insights
@@ -1503,7 +1503,7 @@ function Dashboard() {
               />
             </div>
           ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-5 lg:grid-cols-3">
               <div className={`${INNER_CARD} p-4`}>
                 <p className="text-xs text-slate-500">Selected stock</p>
                 <p className="mt-2 text-2xl font-bold text-white">
@@ -1533,7 +1533,7 @@ function Dashboard() {
               </div>
 
               {forecastPoints.length > 0 && (
-                <div className="h-52 min-w-0 rounded-xl border border-[#142039] bg-[#070f1e] p-3 md:col-span-3">
+                <div className="h-48 min-w-0 rounded-xl border border-[#142039] bg-[#070f1e] p-2 sm:h-52 sm:p-3 sm:col-span-2 lg:col-span-3">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={forecastPoints}>
                       <CartesianGrid
@@ -1596,12 +1596,12 @@ function Dashboard() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-5 sm:gap-4">
             {quickLinks.map((link) => (
               <button
                 key={link.path}
                 onClick={() => navigate(link.path)}
-                className="group rounded-2xl border border-[#142039] bg-[#050b18] p-5 text-left transition duration-200 hover:-translate-y-1 hover:border-[#24458f] hover:bg-[#070f1e]"
+                className="group min-w-0 rounded-2xl border border-[#142039] bg-[#050b18] p-4 text-left transition duration-200 hover:-translate-y-1 hover:border-[#24458f] hover:bg-[#070f1e] sm:p-5"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#1b315c] bg-[#0b1930] text-xl text-blue-300 transition group-hover:bg-[#14264a]">
                   {link.symbol}
